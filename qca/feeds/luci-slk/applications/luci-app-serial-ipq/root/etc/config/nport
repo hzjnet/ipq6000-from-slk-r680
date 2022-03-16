@@ -1,0 +1,12 @@
+
+config ttyM1
+	option localport '4001'
+	option timeout '300'
+	option baud '9600'
+	option data '8DATABITS'
+	option stop '1STOPBIT'
+	option parity 'NONE'
+	option netpro 'tcpserver'
+	option maxconn '6'
+	option tranpro 'raw'
+	option enable '1'

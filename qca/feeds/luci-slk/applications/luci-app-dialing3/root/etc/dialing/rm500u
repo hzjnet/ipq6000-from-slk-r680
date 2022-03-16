@@ -1,0 +1,172 @@
+###FM650拔号脚本###
+###版本：v1.1###
+
+#. /etc/dialing/fun_modem
+mibm_log="/tmp/mbim.log"		#拔号日志
+######## QUECTEL 模块配置 ########
+Set_RM500U_MODEL()
+{	
+	rec=$(sendat $usb_path "AT" 500 |grep OK |wc -l)                        
+	if [ $rec == "1" ];then                  
+		sleep 1s                         
+	else                                     
+		sleep 5s                         
+	fi 
+	#查询网卡驱动方式
+	if [ -n "$1" ];then
+		rec=$(sendat $usb_path 'AT+QCFG="usbnet"' 500 | grep "$1" | wc -l)
+		if [ "$rec" -eq "1" ];then
+			Debug "AT+QCFG=\"usbnet\",$1"
+		fi
+	fi
+	#配置网卡拨号方式
+	if [ -n "$2" ];then
+		rec=$(sendat $usb_path 'AT+QCFG="nat"' 500 | grep "$2" | wc -l)
+		if [ "$rec" -eq "0" ];then
+			rec=$(sendat $usb_path "AT+QCFG=\"nat\",$2" 500 | grep "OK" | wc -l)
+			if [ "$rec" -eq "1" ];then
+				Debug "Set AT+QCFG=\"nat\",$2"
+			fi
+			sendat $usb_path "AT+CFUN=1,1" > /dev/null 2>&1
+			sleep 25s
+		else
+			Debug "AT+QCFG=\"nat\",$2"
+		fi
+	fi
+}
+
+######## QUECTEL 锁定工作模式 ########
+# Automatically
+# WCDMA Only
+# LTE Only
+# PREFER LTE,THEN WCDMA
+# NR5G Only
+# NO WCDMA And NR5G
+# PREFER NR5G,THEN LTE
+# PREFER NR5G,THEN LTE,LAST WCDMA
+####################################
+QUECTEL_MODE()
+{
+	#锁定服务
+	if [ -n "$1" ];then
+		Debug "smode:$1"
+		sendat $usb_path "AT+QNWPREFCFG=\"mode_pref\",$1" > /tmp/at.log
+		sleep 1
+		rec=$(cat /tmp/at.log |grep "OK")
+		if [ -n "$rec" ]; then
+			Debug "Set AT+QNWPREFCFG=\"mode_pref\",$1"
+		fi
+	else
+		sendat $usb_path "AT+QNWPREFCFG=\"mode_pref\",AUTO" > /tmp/at.log
+		Debug "Set AT+QNWPREFCFG=\"mode_pref\",AUTO"
+	fi
+	
+	#挂断拨号
+	rec=$(sendat $usb_path "AT+QNETDEVSTATUS=1" 1000 | grep "+QNETDEVSTATUS:" | wc -l)
+	if [ $rec == "1" ];then
+		rec=$(sendat $usb_path 'AT+QNETDEVCTL=1,2,1' 1000| grep "OK" | wc -l)
+		if [ "$rec" -eq "1" ];then
+			Debug "Close dial OK,AT+QNETDEVCTL=1,2,1"
+		fi
+	fi
+}
+
+
+######################################################
+#QUECTEL模组++++++++++++++++++++++++++++++++++++++++++#
+######################################################
+
+########## 解析QENG数据 ##########
+Analytic_RM500U_QENG()
+{
+	#无服务状态
+	sendat $usb_path 'AT+QNWINFO' 500 > /tmp/at.log
+	rec=$(cat /tmp/at.log | grep "No Service" | wc -l)
+	if [ "$rec" -eq "1" ];then
+		Debug "No Service" #不插卡
+		return
+	fi
+		
+	rec=$(cat /tmp/at.log | grep "UNKNOW Service" | wc -l)
+	if [ "$rec" -eq "1" ];then
+		Debug "UNKNOW Service" #无法上网
+		return
+	fi
+	
+	#有服务状态
+	sendat $usb_path 'AT+QENG="servingcell"' 500 > /tmp/at.log
+	rec=$(cat /tmp/at.log | grep "servingcell")
+	if [ -n "$rec" ]; then
+
+		############# 解析NR5G-SA类型 #############
+		nr_rec=$(echo $rec | grep "NR5G-SA")
+		if [ -n "$nr_rec" ];then
+			nservice="NR5G-SA" #SERVICE
+			band=$(echo $nr_rec | awk -F ',' '{print $11}') #BAND
+			nr_rsrp=$(echo $nr_rec | awk -F ',' '{print $13}') #SIGNAL
+			RSRP $nr_rsrp
+			echo "+CPSI: $nservice" >> $output_file
+			echo "+BAND: $band" >> $output_file
+			Debug "$nservice BAND=$band"
+		else
+			############# 解析NR5G-NSA类型 #############
+			nr_rec=$(echo $rec | grep "NR5G-NSA")
+			if [ -n "$nr_rec" ];then
+				nservice="NR5G-NSA" #SERVICE
+				band=$(echo $nr_rec | awk -F ',' '{print $8}') #BAND
+				nr_rsrp=$(echo $nr_rec | awk -F ',' '{print $12}') #SIGNAL
+				RSRP $nr_rsrp
+				echo "+CPSI: $nservice" >> $output_file
+				echo "+BAND: $band" >> $output_file
+				Debug "$nservice BAND=$band"
+			else
+				############# 解析LTE类型 #############
+				lte_rec=$(echo $rec | grep "LTE")
+				if [ -n "$lte_rec" ];then
+					nservice="LTE" #SERVICE
+					band=$(echo $lte_rec | awk -F ',' '{print $10}') #BAND
+					nr_rsrp=$(echo $lte_rec | awk -F ',' '{print $14}') #SIGNAL
+					RSRP $nr_rsrp
+					echo "+CPSI: $nservice" >> $output_file
+					echo "+BAND: $band" >> $output_file
+					Debug "$nservice BAND=$band"
+				else
+					############# 解析WCDMA类型 #############
+					w_rec=$(echo $rec | grep "WCDMA")
+					if [ -n "$w_rec" ];then
+						nservice="WCDMA" #SERVICE
+						band="WCDMA"
+						Analytic_CSQ
+						echo "+CPSI: $nservice" >> $output_file
+						echo "+BAND: $band" >> $output_file
+						Debug "$nservice BAND=$band"
+					else
+						nservice="UNKNOWN"
+					fi
+				fi
+			fi
+		fi		
+	fi  
+}
+
+QNRndis()
+{
+	uci set network.modem.proto='dhcp'
+	uci set network.modem.ifname='usb0'
+	uci commit
+	
+	rec1=$(sendat $usb_path 'AT+CEREG?'| grep "0,1" | wc -l)
+	rec2=$(sendat $usb_path 'AT+CEREG?'| grep "0,5" | wc -l)
+	rec3=$(sendat $usb_path 'AT+C5GREG?'| grep "0,1" | wc -l)
+	rec4=$(sendat $usb_path 'AT+C5GREG?'| grep "0,5" | wc -l)
+	if [ $rec1 == "1" ] || [ $rec2 == "1" ] || [ $rec3 == "1" ] || [ $rec4 == "1" ]; then
+		sendat $usb_path "AT+QNETDEVCTL=1,3,1" > /dev/null 2>&1
+		rec=$(sendat $usb_path "AT+QNETDEVSTATUS=1" 1000 | grep "+QNETDEVSTATUS:" | wc -l)
+		if [ "$rec" -eq "1" ];then
+			ifup modem > /dev/null 2>&1
+			#udhcpc -i wwan0 > /dev/null 2>&1 
+			Debug "Ndis dial OK"
+		fi
+		
+	fi
+}

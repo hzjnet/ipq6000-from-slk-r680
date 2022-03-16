@@ -1,0 +1,28 @@
+#!/bin/sh /etc/rc.common
+START=90
+#STOP=10
+#USE_PROCD=0
+
+kill_exe()
+{	
+	if [ $(pgrep -f $1 | wc -l) -ne 0 ];then
+		echo $(pgrep -f $1)
+		kk=$(pgrep -f $1)
+		echo $kk
+		kill -9 $kk
+	fi
+}
+
+start()
+{
+	sleep 10s
+	dialing &
+}
+
+stop()
+{	
+	ifdown SIM
+	kill_exe dialing
+	kill_exe simcom-cm
+	rm -rf /tmp/*SIM
+}

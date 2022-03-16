@@ -1,0 +1,25 @@
+<svg width="630" height="632" xmlns="http://www.w3.org/2000/svg">
+ <!-- Created with Method Draw - http://github.com/duopixel/Method-Draw/ -->
+
+ <g>
+  <title>background</title>
+  <rect fill="none" id="canvas_background" height="634" width="632" y="-1" x="-1"/>
+  <g display="none" overflow="visible" y="0" x="0" height="100%" width="100%" id="canvasGrid">
+   <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="#000" rx="20" id="svg_1" height="629.999977" width="109" y="1.000005" x="520" stroke-width="0" fill="#56aaff"/>
+  <rect stroke="#000" rx="20" id="svg_2" height="522" width="109" y="109.000021" x="390" stroke-width="0" fill="#56aaff"/>
+  <rect stroke="#56aaff" rx="20" id="svg_4" height="391" width="109" y="239.999992" x="261" stroke-width="0" fill="#56aaff"/>
+  <rect stroke="#56aaff" rx="20" id="svg_5" height="240" width="109" y="391.000002" x="131" stroke-width="0" fill="#56aaff"/>
+  <rect stroke="#000" rx="20" id="svg_6" height="129.000003" width="108.999995" y="501.999982" x="0" stroke-width="0" fill="#56aaff"/>
+  <defs>
+   <style type="text/css"/>
+  </defs>
+  <defs>
+   <style type="text/css"/>
+  </defs>
+ </g>
+</svg>

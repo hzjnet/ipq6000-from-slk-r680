@@ -1,0 +1,112 @@
+<%#
+ Copyright 2008 Steven Barth <steven@midlink.org>
+ Copyright 2008-2012 Jo-Philipp Wich <jow@openwrt.org>
+ Licensed to the public under the Apache License 2.0.
+-%>
+
+<%+header%>
+<%
+
+	local statue = luci.http.formvalue("status")
+	if statue then
+		luci.sys.exec("uci set luci.main.lang="..statue .."")
+		luci.sys.exec("uci commit luci")
+	end
+	
+
+-%>
+
+ <script type="text/javascript">
+	function change_lang(s){
+		try{
+		XHR.poll(1, '<%=pcdata(REQUEST_URI)%>', { status: s.value },
+			function(x, info)
+			{
+				setTimeout(function(){
+					window.location.reload();
+				},300)
+			})
+		}catch(e){}
+
+		
+	}
+</script>	
+<form id="fmdata" style='display:inline;float: right;' >
+	<label class="cbi-value-title" style="text-align:right;"><%:Language%> :</label>
+	<select  onchange="change_lang(this)">
+		<% for k, net in luci.util.kspairs(luci.config.languages) do  %>
+			<%if k:sub(1, 1) ~= "." then%>
+				<option value ="<%=k%>" <%=luci.sys.exec("uci get luci.main.lang |grep ".. k .." && echo  selected='true'")  %> ><%=net%></option>
+			<%end%>
+		<%end%>
+	</select>
+</form>
+
+<form method="post" action="<%=pcdata(luci.http.getenv("REQUEST_URI"))%>">
+	<div class="cbi-map">
+		<h2>
+			<a id="content" name="content"><%:Authorization Required%></a>
+		</h2>
+		<div class="cbi-map-descr">
+		<!--	<%:Please enter your username and password.%> -->
+			<%- if fuser then %>
+			<div class="error"><%:Invalid username and/or password! Please try again.%></div>
+			<br />
+			<% end -%>
+		</div>
+		<fieldset class="cbi-section-node">
+			<div style="display:none">
+				<label class="cbi-value-title"><%:Username%></label>
+				<div>
+					<input class="cbi-input-user" type="text" name="luci_username" value="<%=duser%>" />
+				</div>
+			</div>
+			<div">
+				<label class="cbi-value-title"><%:Password%></label>
+				<div class="cbi-value-field">
+					<input class="cbi-input-password" type="password" name="luci_password" />
+				</div>
+			</div>
+
+		</fieldset>
+
+		<div>
+			<input type="submit" value="<%:Login%>" class="cbi-button-login" />
+		</div>
+	</div>
+
+</form>
+<script type="text/javascript">//<![CDATA[
+	var input = document.getElementsByName('luci_password')[0];
+	if (input)
+		input.focus();
+//]]></script>
+
+<%
+local uci  = require "luci.model.uci".cursor()
+local fs  = require "nixio.fs"
+local https_key = uci:get("uhttpd", "main", "key")
+local https_port = uci:get("uhttpd", "main", "listen_https")
+if type(https_port) == "table" then
+	https_port = https_port[1]
+end
+
+if https_port and fs.access(https_key) then
+	https_port = https_port:match("(%d+)$")
+%>
+
+<script type="text/javascript">//<![CDATA[
+	if (document.location.protocol != 'https:') {
+		var url = 'https://' + window.location.hostname + ':' + '<%=https_port%>' + window.location.pathname;
+		var img=new Image;
+		img.onload=function(){window.location = url};
+		img.src='https://' + window.location.hostname + ':' + '<%=https_port%>' + '<%=resource%>/cbi/up.gif?' + Math.random();;
+		setTimeout(function(){
+			img.src=''
+		}, 5000);
+	}
+//]]></script>
+
+<% end %>
+
+<%+footer%>

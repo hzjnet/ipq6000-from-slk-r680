@@ -1,0 +1,297 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-12-21 23:08+0200\n"
+"PO-Revision-Date: 2015-04-23 13:49+0800\n"
+"Last-Translator: GuoGuo <gch981213@gmail.com>\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Poedit 1.7.5\n"
+
+msgid "Network Setting"
+msgstr "网络设置"
+
+msgid "Internet"
+msgstr "上网设置"
+
+msgid "Wireless"
+msgstr "无线WiFi"
+
+msgid "DHCP Setting"
+msgstr "DHCP设置"
+
+msgid "Routing Setting"
+msgstr "路由设置"
+
+msgid "Routing Table"
+msgstr "路由表"
+
+msgid "Network Backup"
+msgstr "网络备份"
+
+msgid "Diagnosis"
+msgstr "诊断"
+
+msgid "Application Manage"
+msgstr "应用管理"
+
+msgid "Equipment Manage"
+msgstr "设备管理"
+
+msgid "Internet Setting"
+msgstr "上网设置"
+
+msgid "LAN Configuration"
+msgstr "LAN配置"
+
+msgid "WAN Configuration"
+msgstr "WAN配置"
+
+msgid "Network Configuration"
+msgstr "网络配置"
+
+msgid "LAN Setting"
+msgstr "LAN设置"
+
+msgid "WAN Setting"
+msgstr "WAN设置"
+
+msgid "As lan"
+msgstr "关联LAN"
+
+msgid "Factory Reset"
+msgstr "恢复出厂设置"
+
+msgid "Device Reboot"
+msgstr "重启设置"
+
+msgid "DMZ"
+msgstr "DMZ设置"
+
+msgid "Restart now"
+msgstr "立即重启"
+
+msgid "Language Setting"
+msgstr "语言设置"
+
+msgid "Port Mapping"
+msgstr "端口映射"
+
+msgid "NTP server"
+msgstr "NTP服务器"
+
+msgid "Routing Status"
+msgstr "路由状态"
+
+msgid "VPN"
+msgstr "虚拟专用网"
+
+msgid "NTP"
+msgstr "NTP时间"
+
+msgid "NTP time server"
+msgstr "NTP时间服务器"
+
+msgid "Synchronize browser time"
+msgstr "同步浏览器时间"
+
+msgid "PPPoE"
+msgstr "PPPoE拔号"
+
+msgid "DHCP address"
+msgstr "动态地址"
+
+msgid "Static address"
+msgstr "静态地址"
+
+msgid "As lan"
+msgstr "关联LAN"
+
+
+
+msgid "WAN network configuration"
+msgstr "WAN网络设置"
+
+msgid "DHCP Server Settings"
+msgstr "DHCP服务器设置"
+
+msgid "Configurable DHCP Server."
+msgstr "配置DHCP"
+
+msgid "WIFI Access Point"
+msgstr "WIFI无线AP"
+
+msgid "WIFI Client"
+msgstr "WIFI无线客户端"
+
+msgid "WIFI Access Point"
+msgstr "WIFI无线AP"
+
+msgid "Wireless Settings"
+msgstr "无线设置"
+
+msgid "Configurable WIFI Access Point"
+msgstr "配置无线AP"
+
+msgid "L2TP Client"
+msgstr "L2TP客户端"
+
+msgid "PPTP Client"
+msgstr "PPTP客户端"
+
+msgid "Configurable L2TP access to VPN."
+msgstr "配置对VPN的L2TP访问."
+
+msgid "Configurable PPTP access to VPN."
+msgstr "配置对VPN的PPTP访问."
+
+msgid "Server Address"
+msgstr "服务器地址"
+
+msgid "OpenVPN Settings"
+msgstr "OpenVPN设置"
+
+msgid "IP Address"
+msgstr "IP地址"
+
+msgid "The DMZ host feature allows one local host to be exposed to the Internet for a special-purpose service."
+msgstr "DMZ主机允许一个本地主机暴露在Internet上以实现特殊目的的服务。"
+
+msgid "Date Time"
+msgstr "日期和时间"
+
+msgid "After the wireless gateway is powered off, the date and time settings are not saved. Enable the Sync from network function to keep the date and time current."
+msgstr "设备掉电后，日期时间信息不会保存。建议您开启自动同步模式，保持时间准确。"
+
+msgid "Modify Password"
+msgstr "修改密码"
+
+msgid "Update Firmware"
+msgstr "升级固件"
+
+msgid "minute"
+msgstr "分(m)"
+
+msgid "hour"
+msgstr "时(h)"
+
+msgid "Time Reboot"
+msgstr "定时重启"
+
+msgid "Configure a timed reboot"
+msgstr "配置定时重启"
+
+msgid "Enable the device to restart during the configured time each day (the recommended time is between 23:00 and 6:00 PM)."
+msgstr "启用每天将在配置的时间内重启设备.（建议时间设置在晚上23:00-6:00之间）"
+
+msgid "UNICOM"
+msgstr "中国联通"
+
+msgid "CMOBILE"
+msgstr "中国移动"
+
+msgid "TELECOM"
+msgstr "中国电信"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "SIM READY"
+msgstr "已插入卡"
+
+msgid "No card inserted"
+msgstr "未插入卡"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Cellular Network"
+msgstr "当前蜂窝网络"
+
+msgid "Card Slot"
+msgstr "蜂窝数据"
+
+msgid "Cellular Version"
+msgstr "软件版本"
+
+msgid "Frequency Band"
+msgstr "频段"
+
+msgid "Configure Device Reboot"
+msgstr "配置设备重新启动"
+
+msgid "tun/tap device"
+msgstr "tun/tap装置"
+
+msgid "Use protocol"
+msgstr "使用协议"
+
+msgid "TCP/UDP port # for both local and remote"
+msgstr "本地和远程的TCP/UDP端口"
+
+msgid "Remote host name or ip address"
+msgstr "主机名或远程ip地址"
+
+msgid "Certificate authority"
+msgstr "证书颁发机构"
+
+msgid "Local certificate"
+msgstr "本地证书"
+
+msgid "Local private key"
+msgstr "本地私钥"
+
+msgid "Set output verbosity"
+msgstr "设置输出详细程度"
+
+msgid "HMAC authentication for packets"
+msgstr "HMAC身份验证"
+
+msgid "Encryption cipher for packets"
+msgstr "数据包加密密码"
+
+msgid "Require explicit key usage on certificate"
+msgstr "要求在证书上显式使用密钥"
+
+msgid "Do not bind to local address and port"
+msgstr "不绑定到本地地址和端口"
+
+msgid "Configure client mode"
+msgstr "配置客户端模式"
+
+msgid "Allow client-to-client traffic"
+msgstr "允许客户端到客户端通信"
+
+msgid "not connected yet."
+msgstr "未连接"
+
+msgid "Auto connect server"
+msgstr "自动重新连接服务器"
+
+msgid "Set Comp_lzo"
+msgstr "使用压缩方式验证客户端证书"
+
+msgid "Linux Command"
+msgstr "Linux进程命令"
+
+msgid "custom"
+msgstr "自定义"
+
+msgid "AT Command"
+msgstr "AT命令"
+
+msgid "VPN Service"
+msgstr "虚拟专用网"
+
+msgid "Metric"
+msgstr "跃点数"
+
+msgid "Configure the priority of this network"
+msgstr "配置此网络优先级"
+
+msgid "Copyright ©2016-2020 Beijing Weilian Comsenz Inc. All rights reserved."
+msgstr "Copyright ©2016-2020 北京伟联科技有限公司"

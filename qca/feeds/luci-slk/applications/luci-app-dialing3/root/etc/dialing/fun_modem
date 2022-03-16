@@ -1,0 +1,518 @@
+#/bin/sh /etc/rc.common
+
+sval=0			#LED信号强度显示 1-5之间，0是关闭
+en=2			#Debug命令输出便能
+reset_count=0	#模块计数重启
+usb_path="/dev/ttyUSB2"
+
+file="/tmp/at.log"				#AT命令返回
+output_file="/tmp/modem"		#显示信息
+mibm_log="/tmp/mbim.log"		#拔号日志
+
+
+
+######################################################
+#系统命令++++++++++++++++++++++++++++++++++++++++++++#
+######################################################
+
+########## Dubug调试输出 ##########
+Debug()
+{
+	tim=$(date "+%Y-%m-%d %H:%M:%S")	#获取系统时间
+	if [ $en == 1 ];then
+		echo $tim $1					#Debug信息输出Console
+	elif [ $en == 2 ]; then
+		echo $tim $1 >> /etc/debug.log		#Debug信息输出到文件
+		sumsize=$(ls -l /etc/debug.log | awk '{print $5}')			#计算文件大小
+		if [ $sumsize -ge 100000 ];then								#文件大小大于等于100kb时
+			tail -n +10 /etc/debug.log > /etc/debugtmp.log			#将第10行之后的内容重定向到新的文件
+			rm /etc/debug.log										#删除原始文件
+			mv /etc/debugtmp.log /etc/debug.log						#重命名新文件为原始文件
+		fi
+	fi
+}
+
+########## 杀死进程 ########## 
+kill_exe()
+{
+	if [ $( pgrep -f $1 | wc -l ) -ne 0 ];then
+		kk=$(pgrep -f $1)
+		kill -9 $kk
+		Debug "Kill $kk"
+	fi
+}
+
+########### 软件超时退出 ########## 
+Timeout()
+{
+	waitfor=5
+	command=$*
+	Debug "Run $command"
+	$command &  
+	( sleep $waitfor ; kill_exe $command  > /dev/null 2>&1)& 
+}
+
+########  M2接口硬复位 ###########
+M2_Reset()
+{
+	rst=$(ls /sys/class/leds |grep "m2_reset")
+	if [ -n "$rst" ];then
+		Debug "Reset modem "
+		echo 0 > $(ls /sys/class/leds/m2_reset/brightness)
+		sleep 1
+		echo 1 > $(ls /sys/class/leds/m2_reset/brightness)
+	else
+		Debug "ERROR! Modem reset not found"
+	fi
+}
+
+###############模块软复位###############
+Modem_reset()
+{	
+	Debug "开启飞行模块"
+	if [ "$model" == "fm650" ]; then					#fm650切换飞行模式
+		sendat $usb_path "AT+CFUN=4" > /dev/null 2>&1
+		sleep 2s
+	else												#sim7600\sim8200\mv31w\rm500u切换飞行模式
+		sendat $usb_path "AT+CFUN=0" > /dev/null 2>&1	
+		sleep 2s
+	fi			
+	sendat $usb_path "AT+CFUN=1" > /dev/null 2>&1
+	sendat $usb_path "AT+CFUN=1" > /dev/null 2>&1
+	sleep 3s
+}
+
+
+######################################################
+#通用模组函数++++++++++++++++++++++++++++++++++++++++#
+######################################################
+
+#检测SIM卡是否插入,10次检测不到则重启模块
+check_cpin()
+{
+	x=0
+	while [ 1 ]
+	do
+		rec=$( sendat $usb_path "AT+CPIN?" | grep "READY")
+		if [ -n "$rec" ]; then
+			sed -i '/+CPIN:/d' $output_file 								#清空上一条CPIN记录
+			echo "$rec" >> $output_file
+			x=0
+			Debug "SIM is READY"
+			return 
+		else
+			if [ "$x" == "1" ]; then
+				sed -i '/+CPIN:/d' $output_file								#清空上一条CPIN记录
+				echo "+CPIN: SIM card not inserted"  >> $output_file
+				cat /tmp/modem > /tmp/modem2
+				Signal_LED
+				ifdown modem
+				Debug "SIM card not inserted"
+			fi
+		fi
+		if [ $x == 10 ]; then
+			if [ "$model" != "fm650" ];then
+				Debug "SIM abnormal restart"
+				Modem_reset 												#软复位模块
+				return
+			else															#fm650支持sim卡热插拔，不需要软复位
+				x=0
+			fi
+		fi
+		
+		let x++
+		sleep 6s
+	done
+}
+
+#检测信号值强度
+check_csq(){
+	#Debug "Check the CSQ"
+	str=$( sendat $usb_path "AT+CSQ" | grep "+CSQ:")
+	echo "$str" >> $output_file
+	sleep 1s
+}
+
+#查看IMEI，10次检测不到不作处理
+#AT^GETIMEI
+#AT^GSN
+check_imei(){
+	#Debug "Check the IMEI" 
+	str=$( sendat $usb_path "AT+CGSN" 500 | sed -n '2p')
+	ii=0
+	while [ 1 ]
+	do	
+		rec=$(echo ${str:0:15} | awk '{print($0~/^[-]?([0-9])+[.]?([0-9])+$/)?"number":"string"}') 	#取15位imei作正则
+		if [ "$rec" == "number" ];then
+			break
+		elif [ $ii -eq 10 ];then
+			break
+		else
+			str=$(sendat $usb_path "AT+CGSN" 500 | sed -n '2p')
+		fi
+		let ii++
+	done
+	echo "+IMEI: $str" >> $output_file
+	sleep 1s
+}
+
+check_imsi(){ 
+	#Debug "Check the IMSI"
+	str=$( sendat $usb_path "AT+CIMI" | sed -n '2p')
+	echo "+IMSI: $str" >> $output_file
+	sleep 1s
+}
+
+#查看运行商
+check_cops(){
+	#Debug "Check the COPS"
+	
+	if [ "$model" == "rm500u" ];then											#rm500u查询前设置运营商显示格式
+		rec=$(sendat $usb_path 'AT+COPS=3,0' 500 | grep "OK" | wc -l)
+		if [ "$rec" -eq "1" ];then
+			Debug "Set AT+COPS=3,0 OK"
+		fi
+	fi
+	str=$( sendat $usb_path "AT+COPS?" |grep "+COPS:")
+	echo "$str" >> $output_file
+	sleep 1s
+}
+
+#设置PIN码
+Set_pincode(){
+	if [ -n $1 ];then
+		sendat $usb_path AT+CPIN="$1"
+		Debug "PIN Code $1"
+	fi
+}
+
+########## 解析CSQ信号值 ##########
+Analytic_CSQ()
+{
+	sendat $usb_path "AT+CSQ" | grep "+CSQ:" > /tmp/at.log
+	if [ ! -f /tmp/at.log ];then
+		Debug "ERROR! /tmp/at.log file does not exist"
+		return
+	fi
+	rec=$(cat /tmp/modem | grep "+CSQ:")
+	if [ -n "$rec" ]; then 
+		rec=$(cat /tmp/at.log | grep "+CSQ:" |awk '{print $2}')
+		rssi=${rec%%,*}
+		if [ $rssi == "99" ] || [ $rssi == "0" ];then
+			sval=0
+		elif [ $rssi -le "7" ];then		#CSQ <= 1-7		0
+			sval=0
+		elif [ $rssi -le "15" ];then	#CSQ <= 8-15	1
+			sval=1
+		elif [ $rssi -le "18" ];then	#CSQ <= 16-18	2
+			sval=2
+		elif [ $rssi -le "21" ];then	#CSQ <= 19-21	3
+			sval=3
+		elif [ $rssi -le "25" ];then	#CSQ <= 22-25	4
+			sval=4	
+		elif [ $rssi -le "31" ];then	#CSQ <= 24-31	5
+			sval=5
+		fi
+		Debug "RSSI=$rssi, sval=$sval"
+		echo "+SVAL: $sval" >> $output_file
+	fi  
+}
+
+########## 解析CESQ信号值 ##########
+Analytic_CESQ()
+{
+	sendat $usb_path "AT+CESQ" | grep "+CESQ:" > /tmp/at.log
+	if [ ! -f /tmp/at.log ];then
+		Debug "ERROR! /tmp/at.log file does not exist"
+		return
+	fi
+	rec=$(cat /tmp/modem | grep "+CSQ:")
+	if [ -n "$rec" ]; then
+		ss_rsrp=$(cat /tmp/at.log | grep "+CESQ:" |awk -F ',' '{print $8}')
+		if [ $ss_rsrp == "255" ] || [ $ss_rsrp == "0" ];then
+			sval=0
+		elif [ $ss_rsrp -le "16" ];then		#ss_rsrp -140		0
+			sval=0
+		elif [ $ss_rsrp -le "35" ];then		#ss_rsrp -121-139	1
+			sval=1
+		elif [ $ss_rsrp -le "45" ];then		#ss_rsrp -111-119	2
+			sval=2
+		elif [ $ss_rsrp -le "55" ];then		#ss_rsrp -101-109	3
+			sval=3
+		elif [ $ss_rsrp -le "65" ];then		#ss_rsrp -91-99		4
+			sval=4	
+		elif [ $ss_rsrp -le "135" ];then	#ss_rsrp -11-89		5
+			sval=5
+		fi
+		Debug "SS_RSSI=$ss_rsrp, sval=$sval"
+		echo "+SVAL: $sval" >> $output_file
+	fi  
+}
+
+RSRP()
+{
+	rsrp=$1
+	if [ $rsrp -le "-140" ];then	#RSRP -140		0
+		sval=0
+	elif [ $rsrp -le "-125" ];then	#RSRP -121-139	1
+		sval=1
+	elif [ $rsrp -le "-115" ];then	#RSRP -111-119	2
+		sval=2
+	elif [ $rsrp -le "-105" ];then	#RSRP -101-109	3
+		sval=3
+	elif [ $rsrp -le "-95" ];then	#RSRP -91-99	4
+		sval=4
+	elif [ $rsrp -le "-10" ];then	#RSRP -11-89	5
+		sval=5
+	else
+		sval=0
+	fi
+	Debug "sval=$sval"
+	echo "+SVAL: $sval" >> $output_file
+}
+
+RSSI()
+{
+	rssi=$1
+	if [ $rssi -ge "-65" ];then		#RSRP -25~-65	5
+		sval=5
+	elif [ $rssi -ge "-75" ];then	#RSRP -66~-75	4
+		sval=4
+	elif [ $rssi -ge "-85" ];then	#RSRP -76~-85	3
+		sval=3
+	elif [ $rssi -ge "-95" ];then	#RSRP -86-95	2
+		sval=2
+	elif [ $rssi -ge "-105" ];then	#RSRP -96-105	1
+		sval=1
+	elif [ $rssi -ge "-115" ];then	#RSRP -106-115	0
+		sval=0
+	else
+		sval=0
+	fi
+	Debug "sval=$sval"
+	echo "+SVAL: $sval" >> $output_file
+}
+
+
+
+################信号指示灯##############
+Signal_LED()
+{
+	#检查LED驱动是否支持rsrp
+	nr_led=$(ls /sys/class/leds | grep "rsrp" )
+	if [ -n "$nr_led" ]; then
+		rec=$(cat $output_file | grep "NR5G" )
+		if [ -n "$rec" ]; then
+			rec=$(cat $output_file |grep "+RSRP:" |awk '{print $2}' )
+			
+			if [ $rsrp -le "-140" ];then	#RSRP -140		0
+				sval2=0
+			elif [ $rsrp -le "-125" ];then	#RSRP -121-139	1
+				sval2=1
+			elif [ $rsrp -le "-115" ];then	#RSRP -111-119	2
+				sval2=2
+			elif [ $rsrp -le "-105" ];then	#RSRP -101-109	3
+				sval2=3
+			elif [ $rsrp -le "-95" ];then	#RSRP -91-99	4
+				sval2=4
+			elif [ $rsrp -le "-10" ];then	#RSRP -11-89	5
+				sval2=5
+			else
+				sval2=0
+			fi
+			RSRP_LED "$sval2"
+		else
+			RSRP_LED "0"
+		fi
+		
+		rec=$(cat $output_file | grep "LTE" )
+		if [ -n "$rec" ]; then
+			rec=$(cat $output_file |grep "+RSRP:" |awk '{print $2}' )
+			
+			if [ $rsrp -le "-140" ];then	#RSRP -140		0
+				sval2=0
+			elif [ $rsrp -le "-125" ];then	#RSRP -121-139	1
+				sval2=1
+			elif [ $rsrp -le "-115" ];then	#RSRP -111-119	2
+				sval2=2
+			elif [ $rsrp -le "-105" ];then	#RSRP -101-109	3
+				sval2=3
+			elif [ $rsrp -le "-95" ];then	#RSRP -91-99	4
+				sval2=4
+			elif [ $rsrp -le "-10" ];then	#RSRP -11-89	5
+				sval2=5
+			else
+				sval2=0
+			fi
+			RSSI_LED "$sval2"
+		else
+			RSSI_LED "0"
+		fi	
+		
+	else	
+		RSSI_LED "$sval2"
+	fi
+}
+
+################信号指示灯##############
+RSRP_LED()
+{	
+	leds=$(ls /sys/class/leds |grep "rsrp")
+	if [ -z "$leds" ]; then
+		Debug "No find leds"
+		return
+	fi
+
+	rec=$1
+	if [ -n "$rec" ];then
+		if [ $rec -ge "1" ];then
+			echo 1 > $(ls /sys/class/leds/*rsrp1/brightness)
+		else
+			echo 0 > $(ls /sys/class/leds/*rsrp1/brightness)
+		fi
+		if [ $rec -ge "2" ];then
+			echo 1 > $(ls /sys/class/leds/*rsrp2/brightness)
+		else
+			echo 0 > $(ls /sys/class/leds/*rsrp2/brightness)
+		fi
+		if [ $rec -ge "4" ];then
+			echo 1 > $(ls /sys/class/leds/*rsrp3/brightness)
+		else
+			echo 0 > $(ls /sys/class/leds/*rsrp3/brightness)
+		fi
+	else
+		echo 0 > $(ls /sys/class/leds/*rsrp1/brightness)
+		echo 0 > $(ls /sys/class/leds/*rsrp2/brightness)
+		echo 0 > $(ls /sys/class/leds/*rsrp3/brightness)
+	fi
+}
+
+################信号指示灯##############
+RSSI_LED()
+{	
+	leds=$(ls /sys/class/leds |grep rssi)
+	if [ -z "$leds" ]; then
+	Debug "No find leds"
+		return
+	fi
+
+	if [ -n "$1" ];then
+		rec="$1"
+	else
+		rec=$(cat $output_file |grep "+SVAL:" |awk '{print $2}' )
+	fi
+	if [ -n "$rec" ];then
+		if [ $rec -ge "1" ];then
+			echo 1 > $(ls /sys/class/leds/*rssi1/brightness)
+		else
+			echo 0 > $(ls /sys/class/leds/*rssi1/brightness)
+		fi
+		if [ $rec -ge "2" ];then
+			echo 1 > $(ls /sys/class/leds/*rssi2/brightness)
+		else
+			echo 0 > $(ls /sys/class/leds/*rssi2/brightness)
+		fi
+		if [ $rec -ge "4" ];then
+			echo 1 > $(ls /sys/class/leds/*rssi3/brightness)
+		else
+			echo 0 > $(ls /sys/class/leds/*rssi3/brightness)
+		fi
+		led4=$(ls /sys/class/leds |grep rssi4)
+		if [ -n "$led4" ]; then
+			if [ $rec -ge "5" ];then
+				echo 1 > $(ls /sys/class/leds/*rssi4/brightness)
+			else
+				echo 0 > $(ls /sys/class/leds/*rssi4/brightness)
+			fi
+		fi
+	else
+		echo 0 > $(ls /sys/class/leds/*rssi1/brightness)
+		echo 0 > $(ls /sys/class/leds/*rssi2/brightness)
+		echo 0 > $(ls /sys/class/leds/*rssi3/brightness)
+		led4=$(ls /sys/class/leds |grep rssi4)
+		if [ -n "$led4" ]; then
+			echo 0 > $(ls /sys/class/leds/*rssi4/brightness)
+		fi
+	fi
+}
+
+
+
+##########读取模组型号##############
+Modem_model()
+{	
+	ii=0
+	while [ 1 ]
+	do
+		lsusb > /tmp/at.log
+		model=$(cat /tmp/at.log |grep "1e2d:00b3")
+		hver=$(uci get system.@system[-1].H_ver)
+		if [ -n "$model" ];then
+			Debug "Modem model is Cinterion MV31W"
+			model="mv31w"
+			uci set modem.@ndis[0].net="5G"
+			uci set system.@system[-1].H_ver=${hver:0:2}.3${hver:0-3:3}
+			uci commit
+			usb_path="/dev/ttyUSB0"
+			. /etc/dialing/mv31w
+			return
+		fi
+		#fm650不同驱动VID:PID——2cb7:0a04\0a05\0a06（ECM\NCM\RNDIS）
+		model=$(cat /tmp/at.log |grep "2cb7:0a0")
+		if [ -n "$model" ];then
+			Debug "Modem model is Fibocom FM650"
+			model="fm650"
+			uci set modem.@ndis[0].net="5G"
+			uci set system.@system[-1].H_ver=${hver:0:2}.2${hver:0-3:3}
+			uci commit
+			usb_path="/dev/ttyUSB0"
+			. /etc/dialing/fm650
+			return
+		fi
+		model=$(cat /tmp/at.log |grep "2c7c:0900")
+		if [ -n "$model" ];then
+			Debug "Modem model is Quectel RM500U"
+			model="rm500u"
+			uci set modem.@ndis[0].net="5G"
+			uci set system.@system[-1].H_ver=${hver:0:2}.4${hver:0-3:3}
+			uci commit
+			usb_path="/dev/ttyUSB2"
+			. /etc/dialing/rm500u
+			return
+		fi
+		model=$(cat /tmp/at.log |grep "1e0e:9001")
+		if [ -n "$model" ];then
+			usb_path="/dev/ttyUSB2" 
+			. /etc/dialing/sim7600
+			. /etc/dialing/sim8200
+			sendat $usb_path ATI > /tmp/at.log
+			ati=$(cat /tmp/at.log |grep "SIMCOM_SIM7600")
+			if [ -n "$ati" ]; then
+				Debug "Modem model is Simcom SIM7600"
+				model="sim7600"
+				uci set modem.@ndis[0].net="4G"
+				uci set system.@system[-1].H_ver=${hver:0:2}.1${hver:0-3:3}
+				uci commit
+				return
+			fi
+			ati=$(cat /tmp/at.log |grep "SIMCOM_SIM8200")
+			if [ -n "$ati" ]; then
+				Debug "Modem model is Simcom SIM8200"
+				model="sim8200"
+				uci set modem.@ndis[0].net="5G"
+				uci set system.@system[-1].H_ver=${hver:0:2}.1${hver:0-3:3}
+				uci commit
+				return
+			fi
+			
+		fi
+		Debug "Unknown model!!!"
+		let ii++
+		
+		if [ "$ii" == "10" ]; then
+			Debug "Exit run.sh"
+			exit
+		fi
+		sleep 5s
+	done
+}

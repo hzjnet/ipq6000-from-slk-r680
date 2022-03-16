@@ -1,0 +1,10 @@
+
+config ndis
+	option enable '1'
+	option bandlist '0'
+	option servertype '0'
+	option ipaddress '114.114.114.114'
+	option en '1'
+	option an '10'
+	option model '0'
+

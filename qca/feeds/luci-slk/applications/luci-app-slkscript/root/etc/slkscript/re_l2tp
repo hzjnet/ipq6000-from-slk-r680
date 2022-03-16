@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+#Simcom module dialing script
+#Software version V1.0.1
+#
+
+
+
+en=0 #调试开关：0关闭，1打开 ，2输出到文件
+outfile="/tmp/slklog2"	#输出文件
+Debug()
+{
+	tim=$(date "+%Y-%m-%d %H:%M:%S")	#获取系统时间
+	if [ $en == 1 ]; then
+		echo $tim $1					#打印输出
+	elif [ $en == 2 ]; then
+		echo $tim $1 >> $outfile		#输出到文件
+	fi
+}
+
+#############################################
+#											#
+#				进入主函数					#
+#											#
+#############################################
+while [ 1 ]
+do
+	if [ $(uci -q get network.l2tp.auto) == "1"	]; then #读取l2tp开启使能
+		Debug "L2TP服务：启用"
+		sleep 1s
+		str=$(uci -q get network.l2tp.server) #读取l2tp服务端IP
+		Debug "服务端IP：$str"
+		sleep 1s
+		Debug "服务端IP网络诊断"
+		ping -c 1 -w 1 $str #获取openvpn接口名称
+		if [ $? -eq 0 ]; then
+			service=$(ifconfig | grep "l2tp" | awk -F " " '{ print $1}') #查看是否存在l2tp接口
+			if [ -z "$service" ]; then 
+			
+				ifdown l2tp > /dev/null 2>&1
+				Debug "关闭l2tp-l2tp"
+				sleep 1s
+				
+				gw=$(route | grep default | sed -n 1p | awk -F " " '{print $2}') #查看路由默认网关
+				Debug "默认网关：$gw"
+				if [ -n "$gw" ]; then
+					route add -net $str netmask 255.255.255.255 gw $gw #添加服务端IP到网关中
+					Debug "添加服务端IP：$str 到默认网关：$gw"
+					sleep 1s
+					ifup l2tp > /dev/null 2>&1 #重启l2tp接口
+					Debug "开启l2tp-l2tp"
+					sleep 1s
+				fi
+				
+			fi
+		fi
+	else
+		Debug "L2TP服务：未启用"
+	fi
+	sleep 5s
+done
+	
+
+
+

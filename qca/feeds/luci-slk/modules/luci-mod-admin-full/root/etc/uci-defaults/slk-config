@@ -1,0 +1,24 @@
+#!/bin/sh
+uci batch <<-EOF
+	set network.pptp=interface
+	set network.pptp.proto='pptp'
+	set network.pptp.auto='0'
+	set network.pptp.metric='8'
+	set network.l2tp=interface
+	set network.l2tp.proto='l2tp'
+	set network.l2tp.auto='0'
+	set network.l2tp.metric='9'
+	set network.openvpn=interface
+	set network.openvpn.enable='0'
+	set network.openvpn.ifname='tun0'
+	set network.wan.proto='dhcp'
+	set network.wwan=interface
+	set network.wwan.ifname='-'
+	set network.wwan.proto='dhcp'
+	set network.lan.ifname='eth1 eth2 eth3'
+	set network.wan.ifname='eth0'
+    commit network
+EOF
+
+
+

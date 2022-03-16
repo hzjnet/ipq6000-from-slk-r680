@@ -1,0 +1,25 @@
+#!/bin/sh /etc/rc.common
+START=60
+
+kill_exe()
+{
+	if [ $( pgrep -f $1 | wc -l ) -ne 0 ];then
+		kk=$(pgrep -f $1)
+		kill -9 $kk
+	fi
+}
+
+start()
+{	
+	ifup modem
+	/bin/sh /etc/rndis &
+	/bin/sh /etc/rssi &
+}
+
+stop()
+{	
+	ifdown modem
+	kill_exe sendat
+	kill_exe rndis 
+	kill_exe rssi 
+}

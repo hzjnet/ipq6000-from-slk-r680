@@ -1,0 +1,12 @@
+#!/bin/sh /etc/rc.common
+START=30
+STOP=80
+
+start()
+{	
+	cpu=$(cat /proc/cpuinfo |grep "model name" |grep "ARMv7" |wc -l)
+	if [ $cpu -ge 1 ]; then
+	insmod /lib/modules/`uname -r`/qmi_wwan_simcom.ko
+	fi
+}
+

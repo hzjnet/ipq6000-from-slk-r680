@@ -1,0 +1,190 @@
+###MV31拔号脚本###
+###版本：v1.1###
+
+#. /etc/dialing/fun_modem
+wdm_path="/dev/cdc-wdm0"
+mibm_log="/tmp/mbim.log"		#拔号日志
+
+######################################################
+#西门子模组++++++++++++++++++++++++++++++++++++++++++#
+######################################################
+
+########## 解析DEBUG数据 ##########
+Analytic_MV31W_DEBUG()
+{
+	sendat $usb_path AT^DEBUG? > /tmp/at.log
+	sleep 1
+	rec=$(cat /tmp/at.log |grep "RAT:")
+	if [ -n "$rec" ]; then
+		rec=${rec#*:}
+		echo "+CPSI: $rec" >> $output_file
+		if [ -n "$rec" ]; then
+			rec=$(cat /tmp/at.log |grep "RAT:"|grep "NR5G")
+			if [ -n "$rec" ]; then
+				band=$(cat /tmp/at.log |grep "band:"|tr -d '\n\r')
+				echo "+BAND: $band" >> $output_file			
+				# MV31W_RSSI "SUB"
+				rec=$(cat /tmp/at.log |grep "nr_rsrp:")
+				rec=${rec##*:}
+				rsrp=${rec%%.*} 
+				RSRP $rsrp
+				Debug "BAND $band rsrp $rsrp"
+			else
+				rec=$(cat /tmp/at.log |grep "RAT:"|grep "LTE")
+				if [ -n "$rec" ]; then
+					band=$(cat /tmp/at.log |grep "band:"| awk '{print $2}')
+					echo "+BAND: $band" >> $output_file	
+					MV31W_RSSI "LTE"
+					# rec=$(cat /tmp/at.log |grep "rsrp:" |awk '{print $2}')
+					# rec=${rec##*(}
+					# rsrp=${rec##*'('} 
+					# RSRP $rsrp
+					Debug "BAND $band rsrp $rec"
+				else
+					rec=$(cat /tmp/at.log |grep "RAT:"|grep "WCDMA")
+					if [ -n "$rec" ]; then
+						band=$(cat /tmp/at.log |grep "band:"|tr -d '\n\r')
+						echo "+BAND: $band" >> $output_file	
+						Analytic_CSQ
+						MV31W_RSSI "WCDMA"
+						# rec=$(cat /tmp/at.log |grep "rsrp:" |awk '{print $2}')
+						# rec=${rec##*(}
+						# rsrp=${rec##*'('} 
+						# RSRP $rsrp
+						Debug "BAND $band rsrp $rec"
+					fi
+				fi
+			fi
+		fi
+	fi
+}
+
+########## 解析W数据 ##########
+MV31W_RSSI()
+{
+	sendat $usb_path AT^RSSI=$1,MAIN > /tmp/at.log
+	sleep 1
+	rec=$(cat /tmp/at.log |grep "RSSI:")
+	if [ -n "$rec" ]; then
+		rec=$(cat /tmp/at.log |grep "RSSI:"|awk '{print $5}')
+		if [ -n "$rec" ]; then
+			rec1=${rec##*(}
+			rssi=${rec1%%.*} 
+			RSSI $rssi
+			echo "+RSSI: $rssi" >> $output_file
+			Debug "RSSI $rssi"
+		fi
+		# rec=$(cat /tmp/at.log |grep "BAND:")
+		# if [ -n "$rec" ]; then
+			# echo "+BAND: $rec" >> $output_file
+			# Debug "+BAND: $rec"
+		# fi		
+	fi
+}
+
+######## MV31W 锁定工作模式 ########
+# 0 Automatically
+# 1 WCDMA Only
+# 2 LTE Only
+# 3 WCDMA And LTE 
+# 4 NR5G Only
+#xx WCDMA And NR5G
+# 6 LTE And NR5G
+# 7 WCDMA And LTE And NR5G
+####################################
+MV31W_SLMODE()
+{
+	if [ -n "$1" ];then
+		sendat $usb_path "AT^SLMODE=1,$1" /tmp/at.log
+		sleep 1
+		rec=$(cat /tmp/at.log |grep "OK")
+		if [ -n "$rec" ]; then
+			Debug "SLMODE set OK, SLMODE=$1"
+		fi
+	else
+		sendat $usb_path "AT^SLMODE=1,0" /tmp/at.log
+		Debug "SLMODE Automatically"
+	fi
+}
+
+########## MV31W mbim拔号 ##########
+# MV31W_MBIM "ipv4" "APN" "auth_type" "user name" "password"
+####################################
+MV31W_MBIM()
+{
+	uci set network.modem.proto='dhcp'
+	uci set network.modem.ifname='wwan0'
+	uci commit
+	if [ -n "$auth" ]; then
+		case $auth in
+			"0") auth_type="none"
+			;;
+			"1") auth_type="pap"
+			;;
+			"2") auth_type="chap"
+			;;
+			*) auth_type="chap"
+			;;
+		esac
+	fi
+
+	if [ -n "$apn" ];then
+		if [ "$iptype" == "IPV4" ];then
+			#Debug "dat1=ipv4:$apn"
+			dat1="ipv4:$apn"
+		elif [ "$iptype" == "IPV6" ];then
+			#Debug "dat1=ipv4:$apn"
+			dat1="ipv6:$apn"
+		else	
+			#Debug "dat1=ipv4v6:$apn"
+			dat1="ipv4v6:$apn"
+		fi
+	fi
+
+	if [ -n "$username" ];then
+		if [ -n "$password" ];then	
+			dat2="\"$auth_type\" \"$username\" \"$password\""
+		fi
+	fi
+
+	Debug "Mibm DAT=$dat1--$dat2"
+	
+	#rec=$(ls /usr/bin |grep "mbimcli")
+	rec=$(ls /sbin |grep "umbim")
+	if [ -n "$rec" ]; then
+		echo "" > $mibm_log
+		if [ -c $wdm_path ]; then
+			Timeout umbim -n -d $wdm_path caps >> $mibm_log
+			sleep 3
+			rec=$(cat $mibm_log |grep "deviceid:")
+			if [ -n "$rec" ];then
+				#Timeout umbim -n -t 1 -d $wdm_path pinstate >> $mibm_log
+				#sleep 1
+				Timeout umbim -n -t 1 -d $wdm_path subscriber >> $mibm_log
+				#sleep 1
+				#Timeout umbim -n -t 3 -d $wdm_path registration >> $mibm_log
+				sleep 1
+				Timeout umbim -n -t 2 -d $wdm_path attach >> $mibm_log
+				sleep 1
+				Timeout umbim -n -t 3 -d $wdm_path connect $dat1 $dat2 >> $mibm_log
+				sleep 1
+				Timeout umbim -n -t 4 -d $wdm_path config >> $mibm_log
+				sleep 3
+				rec=$(cat $mibm_log |grep "ipv4address:")
+				if [ -n "$rec" ];then
+					ipv4=$(echo $rec |awk '{print $2}')
+					Debug "MBIM dial successfully, IPV4 $ipv4"
+					#cat $mibm_log
+					ifup modem
+				else
+					Debug "MBIM dial failed"
+				fi
+			fi
+		else
+			Debug "Not found cdc-wdm0"
+		fi
+	else
+		Debug "Not found mbimcli"
+	fi
+}
+

@@ -1,0 +1,25 @@
+#!/bin/sh
+uci batch <<-EOF
+	set wireless.wifi1.htmode='HT40'
+	set wireless.wifi0.htmode='HT80'
+	set wireless.wifi0.channel='64'
+	set wireless.wlan0.channel='64'
+	
+	set wireless.sta0=wifi-iface
+	set wireless.sta0.device='wifi1'
+	set wireless.sta0.ifname='ath01'
+	set wireless.sta0.mode='sta'
+	set wireless.sta0.network='wific'
+	set wireless.sta0.disabled='1'
+
+	set network.wific=interface
+	set network.wific.proto='dhcp'
+	set network.wific.metric='40'
+	set network.wific.ifname='-'
+
+    commit network
+    commit wireless
+	sync
+EOF
+
+

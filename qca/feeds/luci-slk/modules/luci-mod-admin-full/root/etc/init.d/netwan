@@ -1,0 +1,101 @@
+#!/bin/sh 
+
+en=0 #调试开关：0关闭，1打开 ，2输出到文件
+outfile="/tmp/slklog"	#输出文件
+Debug()
+{
+	tim=$(date "+%Y-%m-%d %H:%M:%S")	#获取系统时间
+	if [ $en == 1 ]; then
+		echo $tim $1					#打印输出
+	elif [ $en == 2 ]; then
+		echo $tim $1 >> $outfile		#输出到文件
+	fi
+}
+
+MIPSvlan() 
+{
+	proto=$(uci get network.wan.proto)
+	if [ "$proto" == "disable" ]; then
+		uci set network.wan.auto='0'
+	else
+		uci del network.wan.auto
+	fi
+	if [ "$proto" == "aslan" ]; then
+		Debug "$proto"
+		uci set network.@switch_vlan[0].ports='0 1 2 3 4 6t'
+		uci del network.@switch_vlan[1].ports
+	else
+		Debug "2"
+		uci set network.@switch_vlan[0].ports='0 1 2 3 6t'
+		uci set network.@switch_vlan[1].ports='4 6t'
+	fi
+}
+
+ARMv7vlan() 
+{
+	proto=$(uci get network.wan.proto)
+	if [ "$proto" == "disable" ]; then
+		uci set network.wan.auto='0'
+	else
+		uci del network.wan.auto
+	fi
+	if [ "$proto" == "aslan" ]; then
+		Debug "$proto"
+		uci set network.@switch_vlan[0].ports='0t 1 2 3 4 5'
+		uci set network.lan.ifname="eth1 eth0"
+		#uci del network.@switch_vlan[1].ports
+	else
+		Debug "2"
+		uci set network.@switch_vlan[0].ports='0t 1 2 3 4'
+		uci set network.lan.ifname="eth1"
+		#uci set network.@switch_vlan[1].ports='0t 5'
+	fi
+}
+
+ARMv7ethx() 
+{
+	proto=$(uci get network.wan.proto)
+	if [ "$proto" == "disable" ]; then
+		uci set network.wan.auto='0'
+	else
+		uci del network.wan.auto
+	fi
+	if [ "$proto" == "aslan" ]; then
+		Debug "$proto"
+		uci set network.lan.ifname="eth0 eth1 eth2 eth3"
+		uci set network.wan.ifname="-"
+		#uci del network.@switch_vlan[1].ports
+	else
+		Debug "2"
+		uci set network.lan.ifname="eth1 eth2 eth3"
+		uci set network.wan.ifname="eth0"
+		#uci set network.@switch_vlan[1].ports='0t 5'
+	fi
+}
+
+mian() {
+
+	model=$(cat /proc/cpuinfo | grep "model" | sed -n '1p' | awk -F ':' '{print $2}'| awk -F ' ' '{print $1}')
+	if [ "$model" == "ARMv7" ]; then
+		Debug "ARMv7"
+		m=$(cat /tmp/sysinfo/model |grep IPQ6018|wc -l)
+		if [ "$m" == "1" ]; then
+			ARMv7ethx
+		else
+			ARMv7vlan
+		fi
+		
+	elif [ "$model" == "MIPS" ]; then
+		Debug "MIPS"
+		MIPSvlan
+	fi
+	
+	uci commit network
+	sleep 3s;
+	/etc/init.d/network restart 
+}
+
+mian
+
+
+

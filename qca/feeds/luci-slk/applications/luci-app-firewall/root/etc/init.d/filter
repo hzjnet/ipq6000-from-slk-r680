@@ -1,0 +1,86 @@
+#!/bin/sh /etc/rc.common
+
+START=18
+STOP=70
+
+CONFIG="/etc/firewall.user"
+
+buildDMZ()
+{
+	config_get_bool enabled $1 enabled
+	if [ -n "$enabled" ]; then
+		config_get dest_ip $1 dest_ip
+		if [ -n "$dest_ip" ]; then
+			echo "iptables -t nat -A zone_wan_prerouting -p tcp -j DNAT --to-destination $dest_ip" >> $CONFIG
+			echo "iptables -t nat -A zone_wan_prerouting -p udp -j DNAT --to-destination $dest_ip" >> $CONFIG
+		fi
+ 		/etc/init.d/firewall restart
+		logger "DMZ Ready"
+	else
+		/etc/init.d/filter stop && /etc/init.d/firewall restart
+	fi
+}
+
+buildDomain()
+{
+	config_get mode $1 mode
+	if [ "" != "$mode" ]; then
+		target="REJECT"
+		[ "REJECT" == "$mode" ] && target="ACCEPT"
+
+		config_get domain $1 domain
+		if [ -n "$domain" ]; then
+			for i in $domain; do
+				echo "iptables -A forwarding_rule -s $i -j $target" >> $CONFIG
+				echo "iptables -A forwarding_rule -d $i -j $target" >> $CONFIG
+			done
+			[ "ACCEPT" == "$target" ] &&
+				echo "iptables -A forwarding_rule -p tcp -m tcp -j REJECT --reject-with tcp-reset" >> $CONFIG
+
+			logger "Domain Filter Ready"
+		fi
+	fi
+}
+
+buildString()
+{
+	config_get name $1 name
+	if [ -n "$name" ]; then
+		for i in $name; do
+			echo "iptables -A forwarding_rule -m string --string $i --algo bm -j DROP" >> $CONFIG
+		done
+		logger "String Filter Ready"
+	fi
+}
+
+start()
+{
+	config_load filter
+	#config_foreach buildString string
+	#config_foreach buildDomain domain
+	config_foreach buildDMZ dmz
+}
+
+stop()
+{
+	echo "# Domain/Keyword Filter" > $CONFIG
+	iptables -F forwarding_rule
+	logger "Flushing forwarding_rule"
+}
+
+restart()
+{
+	stop
+	sleep 2
+	start
+}
+
+reload()
+{
+	restart
+}
+
+boot()
+{
+    echo '' > $CONFIG
+}

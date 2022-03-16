@@ -1,0 +1,95 @@
+<%#
+    Material is a clean HTML5 theme for LuCI. It is based on luci-theme-bootstrap and MUI
+
+    luci-theme-material
+        Copyright 2015 Lutty Yang <lutty@wcan.in>
+
+    Have a bug? Please create an issue here on GitHub!
+        https://github.com/LuttyYang/luci-theme-material/issues
+
+    luci-theme-bootstrap:
+    Copyright 2008 Steven Barth <steven@midlink.org>
+    Copyright 2008 Jo-Philipp Wich <jow@openwrt.org>
+    Copyright 2012 David Menting <david@nut-bolt.nl>
+
+    MUI:
+    https://github.com/muicss/mui
+
+    Licensed to the public under the Apache License 2.0
+-%>
+<%if (nixio.fs.access("/etc/config/modem"))then %>
+						<script type="text/javascript">//<![CDATA[
+	XHR.poll(5, "<%=luci.dispatcher.build_url("admin","status","headers")%>", null,
+		function(x, info)
+		{
+			//console.log(info)
+			var s ;
+			s=document.getElementsByClassName("cursors")
+			if (info!=null){
+				s[0].style.display="revert";
+				
+				if(info.isCard){
+					s = document.getElementById("Card")
+					if(info.isCard=="5G"){
+						s.innerHTML="<%:5G%>";
+					}else if(info.isCard=="4G"){
+						s.innerHTML="<%:4G%>";
+					}else if(info.isCard=="3G"){
+						s.innerHTML="<%:3G%>";
+					}else if(info.isCard=="NO"){
+						s.innerHTML='';
+					}else{
+						s.innerHTML="<%:Unknown%>";
+					}
+				}
+
+				if(info.isSignals){
+					s = document.getElementsByClassName("Signals")
+					var e=document.getElementById("issignal")
+					if(info.isSignals != "NO"){
+						e.src="/luci-static/resources/icons/Signal-"+ info.isSignals +".svg"
+					}else{
+						e.src="/luci-static/resources/icons/Signal-0.svg"
+					}
+/**
+					if(info.isSignals>=5 && info.isSignals<=7){
+						e.src="/luci-static/resources/icons/signal-0-1.png"
+					}else if(info.isSignals>7 && info.isSignals<=9){
+						e.src="/luci-static/resources/icons/signal-0-2.png"
+					}else if(info.isSignals>=10 && info.isSignals<=12){
+						e.src="/luci-static/resources/icons/signal-0-3.png"
+					}else if(info.isSignals>12 && info.isSignals<=14){
+						e.src="/luci-static/resources/icons/signal-0-4.png"
+					}else if(info.isSignals>=15 && info.isSignals<=31){
+						e.src="/luci-static/resources/icons/Signal-5.svg"
+					}else
+						e.src="/luci-static/resources/icons/signal-0-0.png"
+					*/	
+				}
+			}else{s[0].style.display="none";}
+		});
+
+//]]></script>
+<%end%>
+<%
+	local ver = require "luci.version"
+	local disp = require "luci.dispatcher"
+	local request  = disp.context.path
+	local category = request[1]
+	local tree = disp.node()
+	local categories = disp.node_childs(tree)
+%>
+                </div>
+
+            </div>
+        </div>
+
+    <script>
+        // thanks for Jo-Philipp Wich <jow@openwrt.org>
+        var luciLocation = <%= luci.http.write_json(luci.dispatcher.context.path) %>;
+    </script>
+    <script src="<%=media%>/js/jquery.min.js"></script>
+    <script src="<%=media%>/js/script.js"></script>
+
+</body>
+</html>

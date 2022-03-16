@@ -1,0 +1,102 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+msgid "LTE Modem"
+msgstr "4G网络"
+
+msgid "4G Modem"
+msgstr "4G网络"
+
+msgid "5G Modem"
+msgstr "5G网络"
+
+msgid "Mobile Network"
+msgstr "移动网络"
+
+msgid "SIM CARD"
+msgstr "SIM卡"
+
+msgid "COPS"
+msgstr "运行商"
+
+msgid "SIM Settings"
+msgstr "SIM卡设置"
+
+msgid "Reconnect time"
+msgstr "重连时间"
+
+msgid "SIM/UIM card Status"
+msgstr "SIM卡信息"
+
+msgid "Lock Band List"
+msgstr "锁定频段"
+
+msgid "Server Type"
+msgstr "服务类型"
+
+msgid "Ping IP address"
+msgstr "PING地址"
+
+msgid "Network Check"
+msgstr "网络检测"
+
+msgid "Network Diagnostics"
+msgstr "网络诊断"
+
+msgid "PIN Code"
+msgstr "PIN码"
+
+msgid "Dial Proto"
+msgstr "拔号协议"
+
+msgid "Auth Type"
+msgstr "认证类型"
+
+msgid "IP Type"
+msgstr "IP协议"
+
+msgid "Automatically"
+msgstr "自动"
+
+msgid "Network exception handling: check the network connection in a loop for 5 seconds. If the Ping IP address is not successful, After the network exceeds the abnormal number, restart and search the registered network again."
+msgstr "网络异常处理：5秒钟循环检查网络连接，如果Ping IP地址没有成功，网络超过异常次数后重启，重新搜索注册网络。"
+
+msgid "Abnormal number"
+msgstr "异常次数"
+
+msgid "Abnormal Restart"
+msgstr "异常重启"
+
+msgid "Force Dial"
+msgstr "强制拨号"
+
+msgid "Modem Log"
+msgstr "拨号日志"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Operating mode"
+msgstr "运行模式"
+
+msgid "Reboot on internet connection lost"
+msgstr "断网重启网络"
+
+msgid "Set airplane mode"
+msgstr "飞行模式"
+
+msgid "Switch SIM card"
+msgstr "切换SIM卡"
+
+msgid "Default SIM Card"
+msgstr "默认SIM卡"
+
+

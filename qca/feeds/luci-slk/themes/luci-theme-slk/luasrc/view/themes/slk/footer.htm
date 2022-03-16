@@ -1,0 +1,99 @@
+<%#
+    Material is a clean HTML5 theme for LuCI. It is based on luci-theme-bootstrap and MUI
+
+    luci-theme-material
+        Copyright 2015 Lutty Yang <lutty@wcan.in>
+
+    Have a bug? Please create an issue here on GitHub!
+        https://github.com/LuttyYang/luci-theme-material/issues
+
+    luci-theme-bootstrap:
+    Copyright 2008 Steven Barth <steven@midlink.org>
+    Copyright 2008 Jo-Philipp Wich <jow@openwrt.org>
+    Copyright 2012 David Menting <david@nut-bolt.nl>
+
+    MUI:
+    https://github.com/muicss/mui
+
+    Licensed to the public under the Apache License 2.0
+-%>
+<%if (nixio.fs.access("/etc/config/modem"))then %>
+						<script type="text/javascript">//<![CDATA[
+	function show_CPSI(ID,value){
+		var cpsi;
+		if(ID)
+		{
+			cpsi=value.modem_cpsi;
+		}
+		if(cpsi){
+			s = document.getElementById("head_"+ID+"_cpsi");
+			if((cpsi.search("5G") != -1 )||(cpsi.search("NR") != -1)){
+				s.innerHTML="<%:5G%>";
+			}else if(cpsi.search("LTE") != -1){
+				s.innerHTML="<%:4G%>";
+			}else if(cpsi.search("CDMA") != -1){
+				s.innerHTML="<%:3G%>";
+			}else if (cpsi.search("GSM") !=-1){
+				s.innerHTML="<%:2G%>";
+			}else if(cpsi=="NO"){
+				s.innerHTML=" ";
+			}else{
+				s.innerHTML="<%:Unknown%>";
+			}
+		}
+	}
+	function show_SIGNAL(ID,value){
+		var sval;
+		if(ID)
+			sval=value.modem_signal;
+		//console.log(value,sval,sval.substring(0,1))
+		if(sval){
+			var e=document.getElementById("head_"+ID+"_signal")
+			if(sval != "NO"){
+				e.src="/luci-static/resources/icons/Signal-"+ sval.substring(0,1) +".svg"
+			}else{
+				e.src="/luci-static/resources/icons/Signal-0.svg"
+			}
+		}
+	}
+	XHR.poll(5, "<%=luci.dispatcher.build_url("admin","status","headers")%>", null,
+		function(x, info)
+		{
+			//console.log(info)
+			var s ;
+			s=document.getElementsByClassName("cursors")
+			if (info!=null){
+				s[0].style.display="revert";
+				//console.log(info)
+				show_CPSI("modem",info);
+				show_SIGNAL("modem",info);
+				
+			}else{s[0].style.display="none";}
+		});
+
+//]]></script>
+<%end%>
+<%
+	local ver = require "luci.version"
+	local disp = require "luci.dispatcher"
+	local request  = disp.context.path
+	local category = request[1]
+	local tree = disp.node()
+	local categories = disp.node_childs(tree)
+%>
+                </div>
+                <footer class="mobile-hide" style="text-align:center;">
+		<a href="http://www.seriallink.net/"><%:Copyright ©2017-2020 Seriallink inc. All rights reserved. %></a> 
+                   
+                </footer>
+            </div>
+        </div>
+    <script>
+        // thanks for Jo-Philipp Wich <jow@openwrt.org>
+        var luciLocation = <%= luci.http.write_json(luci.dispatcher.context.path) %>;
+    </script>
+    <script src="<%=media%>/js/jquery.min.js"></script>
+    <script src="<%=media%>/js/script.js"></script>
+
+</body>
+</html>

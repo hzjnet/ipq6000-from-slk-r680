@@ -1,0 +1,39 @@
+<svg width="630" height="632" xmlns="http://www.w3.org/2000/svg">
+ <!-- Created with Method Draw - http://github.com/duopixel/Method-Draw/ -->
+ <defs>
+  <linearGradient y2="1" x2="1" y1="0" x1="1" id="svg_29">
+   <stop offset="0" stop-color="#ffffff"/>
+   <stop offset="1" stop-color="#000000"/>
+  </linearGradient>
+  <linearGradient y2="1" x2="1" y1="0" x1="1" id="svg_31">
+   <stop offset="0" stop-color="#ededed"/>
+   <stop offset="1" stop-color="#121212"/>
+  </linearGradient>
+ </defs>
+ <g>
+  <title>background</title>
+  <rect fill="none" id="canvas_background" height="634" width="632" y="-1" x="-1"/>
+  <g display="none" overflow="visible" y="0" x="0" height="100%" width="100%" id="canvasGrid">
+   <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke-opacity="0.5" stroke="url(#svg_31)" rx="20" id="svg_28" height="629.999977" width="109" y="1.000005" x="519" stroke-width="0" fill="#dddddd"/>
+  <rect stroke-opacity="0.5" stroke="url(#svg_31)" rx="20" id="svg_33" height="629.999977" width="109" y="1.000005" x="519" stroke-width="0" fill="#dddddd"/>
+  <rect stroke-opacity="0.5" fill-opacity="0.3" stroke="url(#svg_31)" rx="20" id="svg_32" height="629.999977" width="109" y="1.000005" x="519" stroke-width="0" fill="url(#svg_29)"/>
+  <rect stroke="url(#svg_31)" stroke-opacity="0.5" rx="20" id="svg_36" height="522.999968" width="109" y="108.000017" x="390" stroke-width="0" fill="#dddddd"/>
+  <rect stroke="url(#svg_31)" stroke-opacity="0.5" fill-opacity="0.3" rx="20" id="svg_35" height="522.999968" width="109" y="108.000017" x="390" stroke-width="0" fill="url(#svg_29)"/>
+  <rect stroke="url(#svg_31)" stroke-opacity="0.5" rx="20" id="svg_38" height="239.999981" width="109" y="391.000003" x="131" stroke-width="0" fill="#dddddd"/>
+  <rect stroke="url(#svg_31)" stroke-opacity="0.5" fill-opacity="0.3" rx="20" id="svg_39" height="239.000002" width="109" y="390.999998" x="133" stroke-width="0" fill="url(#svg_29)"/>
+  <rect stroke="url(#svg_31)" stroke-opacity="0.5" rx="20" id="svg_40" height="390.999983" width="109" y="239.999991" x="261" stroke-width="0" fill="#dddddd"/>
+  <rect stroke="url(#svg_31)" stroke-opacity="0.5" fill-opacity="0.3" rx="20" id="svg_37" height="390.999961" width="109" y="240.000012" x="261" stroke-width="0" fill="url(#svg_29)"/>
+  <rect stroke="#000" rx="20" id="svg_6" height="129.000003" width="108.999995" y="501.999982" x="0" stroke-width="0" fill="#56aaff"/>
+  <defs>
+   <style type="text/css"/>
+  </defs>
+  <defs>
+   <style type="text/css"/>
+  </defs>
+ </g>
+</svg>

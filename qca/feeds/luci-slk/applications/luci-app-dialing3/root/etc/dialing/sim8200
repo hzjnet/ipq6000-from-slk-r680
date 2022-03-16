@@ -1,0 +1,155 @@
+###SIM8200拔号脚本###
+###版本：v1.1###
+
+#. /etc/dialing/fun_modem
+mibm_log="/tmp/mbim.log"		#拔号日志
+######## SIMCOM 锁定工作模式 ########
+# 2 Automatically
+# 14 WCDMA Only
+# 38 LTE Only
+# 54 WCDMA And LTE 
+# 71 NR5G Only
+# xx WCDMA And NR5G
+# 109 LTE And NR5G
+# 55 WCDMA And LTE And NR5G
+####################################
+SIMCOM_MODE()
+{
+	if [ -n "$1" ];then
+		sendat $usb_path "AT+CNMP=$1" > /tmp/at.log
+		sleep 1
+		rec=$(cat /tmp/at.log |grep "OK")
+		if [ -n "$rec" ]; then
+			Debug "Set AT+CNMP=$1"
+		fi
+	else
+		sendat $usb_path "AT+CNMP=2" > /tmp/at.log
+		Debug "Set AT+CNMP=2; Automatically"
+	fi
+}
+
+
+######################################################
+#SIMCOM模组++++++++++++++++++++++++++++++++++++++++++#
+######################################################
+
+########## 解析CPSI数据 ##########
+Analytic_SIMCOM_CPSI()
+{
+	sendat $usb_path "AT+CPSI?" 500 > /tmp/at.log
+	rec=$(cat /tmp/at.log | grep "+CPSI:")
+	if [ -n "$rec" ]; then
+	
+		######## 读取信号异常处理 #########
+		rec=$(cat /tmp/at.log |grep "NO SERVICE")
+		if [ -n "$rec" ];then
+			echo "+CPSI: NO SERVICE" >> $output_file
+			Debug "NO SERVICE"
+			return
+		fi
+		
+		rec=$(cat /tmp/at.log |grep "32768")
+		if [ -n "$rec" ];then
+			Debug "-32768"
+			return
+		fi
+		
+		# rec=$(cat /tmp/at.log |grep "Online")
+		# if [ -n "$rec" ];then
+			# echo "${rec%%,*}" >> $output_file 
+			# #Debug "Online"
+		# fi
+		
+		######## 解析NR5G信号 #############
+		rec=$(cat /tmp/at.log |grep "NR5G")
+		if [ -n "$rec" ]; then
+			echo "${rec%%,*}" >> $output_file
+			rec=${rec##*NR5G_BAND}
+			nr_band=${rec%%,*} 				#NR5G_BAND
+			rec=${rec#*,}
+			rec=${rec#*,}
+			nr_rsrq=${rec%%,*} 				
+			nr_rsrq=`expr $nr_rsrq / 10` 	#NR5G_RSRP
+			RSRP $nr_rsrq
+			Debug "NR_BAND=$nr_band nr_rsrq=$nr_rsrq"
+			echo "+BAND: $nr_band" >> $output_file
+			echo "+RSRQ: $nr_rsrq" >> $output_file
+		else
+			########  解析LTE信号 ###########
+			rec=$(cat /tmp/at.log |grep "LTE")
+			if [ -n "$rec" ]; then
+				echo "${rec%%,*}" >> $output_file
+				rec=${rec#*EUTRAN-}
+				lte_band=${rec%%,*} #EUTRAN-BAND
+				rec=${rec#*,}
+				rec=${rec#*,}
+				rec=${rec#*,}
+				rec=${rec#*,}
+				rec=${rec#*,}
+				lte_rsrq=${rec%%,*} #lte_rsrq
+				lte_rsrq=`expr $lte_rsrq / 10` #lte_rsrq
+				RSRP $lte_rsrq
+				Debug "LTE_BAND=$lte_band lte_rsrq=$lte_rsrq" 
+				echo "+BAND: $lte_band" >> $output_file
+				echo "+RSRQ: $lte_rsrq" >> $output_file
+			else
+				########  解析WCDMA BAND ###########
+				rec=$(cat /tmp/at.log |grep "WCDMA")
+				if [ -n "$rec" ]; then
+					echo "${rec%%,*}" >> $output_file
+					rec=${rec#*WCDMA }
+					w_band=${rec%%,*} #WCDMA
+					Debug "WCDMA_BAND=$w_band"
+					echo "+BAND: $w_band" >> $output_file
+					Analytic_CSQ
+				else
+					rec=$(cat /tmp/at.log |grep "Online")
+					echo "${rec%%,*}" >> $output_file
+					Debug "BAND=UNKNOWN"
+					echo "+BAND: UNKNOWN" >> $output_file
+					Analytic_CSQ
+				fi	
+			fi
+		fi
+	fi  
+}
+
+simcom_cm1()
+{
+	#Debug "qmimux0 not ip"
+	uci set network.modem.proto='dhcp'
+	uci set network.modem.ifname='qmimux0'
+	uci commit
+	if [ $( pgrep -f simcom-cm | wc -l ) -ge 0 ];then
+		Debug "Run simcom-cm"
+		if [ "$iptype" == "IPV6" ];then
+			ipv4="-6"
+		elif [ "$iptype" == "IPV4V6" ];then
+			ipv4="-4 -6"
+		else
+			ipv4=""
+		fi
+		Debug "$iptype ipv4:$ipv4"
+		if [ -n "$apn" ]; then
+			if [ -n "$username" ]; then
+				cmd="-s $apn $username $password $auth $ipv4"
+				simcom-cm $cmd >> $mibm_log &
+				Debug "APN=$apn,USER=$username,PASSWORD=$password,AUTH=$auth $mibm_log"
+			else
+				cmd="-s $apn $ipv4"
+				simcom-cm $cmd >> $mibm_log &
+				Debug "APN=$apn $mibm_log"
+			fi
+		else
+			simcom-cm $ipv4 >> $mibm_log &
+			Debug "Simcom-cm OK $mibm_log"
+		fi
+		ifup modem
+	else
+		rou=$(route -n |grep wwan0 |grep UG |wc -l)
+		if [ $rou -ge 2 ];then
+			ifup modem
+			Debug "Modem Up"
+		fi
+	fi
+}

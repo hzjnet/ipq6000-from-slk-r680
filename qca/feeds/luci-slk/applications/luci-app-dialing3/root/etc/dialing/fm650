@@ -1,0 +1,166 @@
+###FM650拔号脚本###
+###版本：v1.1###
+##版本说明：不配置网卡驱动，仅日志打印网卡驱动模式
+#. /etc/dialing/fun_modem
+mibm_log="/tmp/mbim.log"		#拔号日志
+######## FIBOCOM 模块配置 ########
+Set_FM650_MODEL()
+{
+	rec=$(sendat $usb_path "AT" 500 |grep OK |wc -l)                        
+	if [ $rec == "1" ];then                  
+		sleep 1s                         
+	else                                     
+		sleep 5s                         
+	fi
+	#配置网卡驱动方式
+	# if [ -n "$1" ];then
+		# rec=$(sendat $usb_path 'AT+GTUSBMODE?' 500 | grep "$1" | wc -l)
+		# if [ "$rec" -eq "0" ];then
+			# rec=$(sendat $usb_path "AT+GTUSBMODE=$1" 500 | grep "OK" | wc -l)
+			# if [ "$rec" -eq "1" ];then
+				# Debug "Set AT+GTUSBMODE=$1"
+			# fi
+			# sendat $usb_path "AT+CFUN=15" > /dev/null 2>&1
+			# sleep 25s
+		# else
+			rec=$(sendat $usb_path 'AT+GTUSBMODE?' 500 | grep "+GTUSBMODE: " | awk -F ' ' '{print$2}')
+			Debug "USBMODE:$rec"
+		# fi
+	# fi
+	#配置网卡拨号方式
+	if [ -n "$2" ];then
+		rec=$(sendat $usb_path "AT+GTIPPASS?" | grep "+GTIPPASS: $2" | wc -l)
+		if [ "$rec" -eq "0" ];then
+			rec=$(sendat $usb_path "AT+GTIPPASS=$2" 500 | grep "OK" |wc -l)
+			if [ "$rec" -eq "1" ];then
+				Debug "Set AT+GTIPPASS=$2"
+			fi
+		else
+			rec=$(sendat $usb_path 'AT+GTIPPASS?' 500 | grep "+GTIPPASS: " | awk -F ' ' '{print$2}')
+			Debug "IPPASS:$rec"
+		fi
+	fi
+	
+}
+######## FIBOCOM 锁定工作模式 ########
+# 10 Automatically
+# 2 WCDMA Only
+# 3 LTE Only
+# 4 WCDMA And LTE 
+# 14 NR5G Only
+# xx WCDMA And NR5G
+# 16 LTE And NR5G
+# 20 WCDMA And LTE And NR5G
+####################################
+FIBOCOM_MODE()
+{
+	#锁定服务
+	if [ -n "$1" ];then
+		Debug "smode:$1"
+		sendat $usb_path "AT+GTRAT=$1" > /tmp/at.log
+		sleep 1
+		rec=$(cat /tmp/at.log |grep "OK" | wc -l)
+		if [ "$rec" -eq "1" ]; then
+			Debug "Set AT+GTRAT=$1"
+		fi
+	else
+		sendat $usb_path "AT+GTRAT=10" > /tmp/at.log
+		Debug "Set AT+GTRAT=10; Automatically"
+	fi
+	
+	#挂断拨号
+	rec=$(sendat $usb_path "AT+GTRNDIS?" 1000 | grep "+GTRNDIS: 1" | wc -l)
+	if [ "$rec" -eq "1" ];then
+		rec=$(sendat $usb_path 'AT+GTRNDIS=0,1' 1000| grep "OK" | wc -l)
+		if [ "$rec" -eq "1" ];then
+			Debug "Close dial OK,AT+GTRNDIS=0,1"
+		fi
+	fi
+}
+
+
+######################################################
+#FIBOCOM模组++++++++++++++++++++++++++++++++++++++++++#
+######################################################
+
+########## 解析INFO数据 ##########
+Analytic_FM650_INFO()
+{
+	sendat $usb_path "AT+GTCCINFO?" 500 > /tmp/at.log
+	rec=$(cat /tmp/at.log | grep "+GTCCINFO:" | wc -l)
+	if [ "$rec" -eq "1" ]; then
+		rec=$(cat /tmp/at.log | grep -A 2 "service")
+		if [ -n "$rec" ]; then
+			nservice=$(echo $rec | sed -n '1p' | awk -F ' ' '{print $1}')
+			if [ "$nservice" == "LTE-NR" ];then
+				rec=$(cat /tmp/at.log | grep -A 2 "service" | sed -n '3p')
+				nservice="NR5G_NSA"
+			else
+				nservice=$(echo $rec | awk -F ',' '{print $2}')
+				case $nservice in
+					"0") Debug "INVALID NETWORK"
+						return
+						;;
+					"1") #Debug "GSM"
+						nservice="GSM"
+						;;
+					"2") #Debug "WCDMA"
+						nservice="WCDMA"
+						;;
+					"3") #Debug "TDSCDMA"
+						nservice="TDSCDMA"
+						;;
+					"4") #Debug "LTE"
+						nservice="LTE"
+						;;
+					"5") #Debug "eMTC"
+						nservice="eMTC"
+						;;
+					"6") #Debug "NB-IoT"
+						nservice="NB-IoT"
+						;;
+					"7") #Debug "CDMA"
+						nservice="CDMA"
+						;;
+					"8") #Debug "EVDO"
+						nservice="EVDO"
+						;;
+					"9") #Debug "NR"
+						nservice="NR5G"
+						;;
+				esac
+			fi
+			
+			band=$(echo $rec | awk -F ',' '{print $9}') #BAND
+			echo "+CPSI: $nservice" >> $output_file
+			Debug "$nservice BAND=$band"
+			echo "+BAND: $band" >> $output_file
+			if [ $nservice == "NR5G" ];then
+				Analytic_CESQ
+			elif [ $nservice == "NR5G_NSA" ];then
+				Analytic_CESQ
+			else
+				Analytic_CSQ
+			fi		
+		fi				
+	fi  
+}
+
+GTRndis()
+{
+	uci set network.modem.proto='dhcp'
+	uci set network.modem.ifname='usb0'
+	uci commit
+	#注网后拨号
+	rec1=$(sendat $usb_path 'AT+CEREG?'| grep "0,1" | wc -l)
+	rec2=$(sendat $usb_path 'AT+CEREG?'| grep "0,5" | wc -l)
+	if [ $rec1 == "1" ] || [ $rec2 == "1" ]; then
+		sendat $usb_path "AT+GTRNDIS=1,1" > /dev/null 2>&1
+		sleep 10s
+		rec=$(sendat $usb_path "AT+GTRNDIS?" 1000 | grep "+GTRNDIS: 1" | wc -l) #查看拨号信息
+		if [ $rec == "1" ];then
+			ifup modem > /dev/null 2>&1 
+			Debug "Ndis dial OK"
+		fi
+	fi
+}

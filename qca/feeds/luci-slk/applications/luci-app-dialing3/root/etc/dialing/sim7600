@@ -1,0 +1,85 @@
+###SIM7600拔号脚本###
+###版本：v1.1###
+
+#. /etc/dialing/fun_modem
+#4G模块拔号
+RndisAT() {	
+	#查看是否注册
+	# rec1=$(sendat $usb_path 'AT+CEREG?'| grep "0,1" | wc -l)
+	# rec2=$(sendat $usb_path 'AT+CEREG?'| grep "0,5" | wc -l)
+	# rec3=$(sendat $usb_path 'AT+CEREG?'| grep "0,4" | wc -l)
+	# Debug "CGREG $rec1 $rec2 $rec3"
+	# if [ $rec1 == "1" ] || [ $rec2 == "1" ]|| [ $rec3 == "1" ]; then
+	uci set network.modem.proto='dhcp'
+	uci set network.modem.ifname='wwan0'
+	uci commit	
+	
+	#关闭拔号
+	rec=$(sendat $usb_path 'AT$QCRMCALL?' 1000| grep "$QCRMCALL:"| grep "V4" | wc -l)
+	if [ "$rec"  == "1" ];then
+		sendat $usb_path 'AT$QCRMCALL=0,1'
+		Debug "Close dial OK,AT$QCRMCALL=0,1"
+	fi
+
+	ser=$( sendat $usb_path "AT+CPSI?" |grep "EVDO" | wc -l)
+	if [ "$ser" == 1 ];then
+		ser1=$( sendat $usb_path "AT+CPSI?" |grep "LTE" | wc -l)
+		if [ "$ser1" == 1 ];then
+			Debug  "NDIS EVOD and LTE"
+		else
+			at="AT$QCRMCALL=1,1,,,,,,\"ctnet@mycdma.cn\",\"vnet.mobi\""
+			rec=$(sendat $usb_path $at 1000 | grep "$QCRMCALL:"| grep "V4" | wc -l)
+			if [ "$rec" == "1" ]; then
+				Debug  "NDIS EVOD OK" 
+				return 0
+			fi
+		fi
+	fi
+
+	#转换Iptype#
+	if [ "$iptype" == "IPV4" ]; then
+		ipte="1"
+	elif [ "$iptype" == "IPV6" ]; then
+		ipte="2"
+	else
+		ipte="3"
+	fi
+
+	#转换AUTH Type#
+	# if [ "$auth" == "NONE" ]; then
+		# ah="0"
+	# elif [ "$auth" == "PAP" ]; then
+		# ah="1"
+	# elif [ "$auth" == "CHAP" ]; then
+		# ah="2"
+	# elif [ "$auth" == "PAP-CHAP" ]; then
+		# ah="3"
+	# else
+		# ah="0"
+	# fi
+	
+	#拔号命令：AT$QCRMCALL=1,1,1,,,,"3gnet","card","card",3	
+	#查看APN,先判断apn配置不为空，再读取apn值
+	if [ -n "$apn" ];then 
+		at='AT$QCRMCALL=1,1'
+		dat=$at,$ipte,,,,'"'$apn'"','"'$username'"','"'$password'"',$auth
+		Debug "Dial AT=$dat"
+		rec=$(sendat $usb_path $dat 1000 | grep "$QCRMCALL:"| grep "V4" | wc -l)
+		if [ "$rec" == "1" ]; then
+			ifup modem > /dev/null 2>&1
+			#udhcpc -i wwan0 > /dev/null 2>&1 
+			Debug "Ndis dial OK,APN=$apn USER=$username pwd=$password "
+		fi
+	else
+		#NDIS拔号
+		rec=$(sendat $usb_path 'AT$QCRMCALL=1,1' 1000| grep "$QCRMCALL:"| grep "V4" | wc -l)
+		if [ "$rec" == "1" ]; then
+			Debug  "NDIS OK, AT$QCRMCALL=1,1"
+			ifup modem > /dev/null 2>&1
+			#udhcpc -i wwan0 > /dev/null 2>&1 
+		fi
+	fi
+	#fi
+}
+
+

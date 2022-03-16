@@ -1,0 +1,6 @@
+#!/bin/sh
+uci batch <<-EOF
+	set luci.themes.WitLinc=/luci-static/WitLinc
+	set luci.main.mediaurlbase=/luci-static/WitLinc
+        commit luci
+EOF

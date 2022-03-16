@@ -1,0 +1,34 @@
+#!/bin/sh /etc/rc.common
+START=99
+
+kill_exe()
+{	
+	if [ $(pgrep -f $1 | wc -l) -ne 0 ];then
+		echo $(pgrep -f $1)
+		kk=$(pgrep -f $1)
+		echo $kk
+		kill -9 $kk
+	fi
+}
+stop()
+{
+	if [ $1 ]; then
+		kill_exe $1
+	fi
+}
+
+start()
+{
+	
+	if [ $1 ];then
+		echo $1
+		/bin/sh /etc/slkscript/"$1" &
+	else
+		/bin/sh /etc/slkscript/re_l2tp &
+		/bin/sh /etc/slkscript/re_openvpn &
+		/bin/sh /etc/slkscript/re_frpc &
+	fi
+	#kill_exe re_l2tp
+	#/bin/sh /etc/slkscript/re_l2tp &
+	#/bin/sh /etc/slkscript/re_openvpn &
+}

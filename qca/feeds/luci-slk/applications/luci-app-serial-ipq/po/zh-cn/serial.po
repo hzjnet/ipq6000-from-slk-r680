@@ -1,0 +1,150 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+msgid "Heart-Beat"
+msgstr "心跳包"
+
+msgid "HEX"
+msgstr "十六进制"
+
+msgid "TCP Server"
+msgstr "TCP服务端"
+
+msgid "TCP Cilent"
+msgstr "TCP客户端"
+
+msgid "UDP Server"
+msgstr "UDP服务端"
+
+msgid "UDP Cilent"
+msgstr "UDP客户端"
+
+msgid "Heart-Beat Content"
+msgstr "心跳内容"
+
+msgid "Heart-Beat Interval(s)"
+msgstr "心跳时间(秒)"
+
+msgid "UDP Server"
+msgstr "UDP 服务端"
+
+msgid "TCP Server"
+msgstr "TCP 服务端"
+
+msgid "Server IP Address"
+msgstr "服务端IP地址"
+
+msgid "Serial Settings"
+msgstr "串口配置"
+
+msgid "Automatic Increase in Port Number"
+msgstr "端口数自动递增"
+
+msgid "Start serial service"
+msgstr "开启"
+
+msgid "Target Port"
+msgstr "目标端口"
+
+msgid "Network Proto"
+msgstr "网络协议"
+
+msgid "Transport Proto"
+msgstr "数据类型"
+
+msgid "Maximum number"
+msgstr "最大连接数"
+
+msgid "Listen Port"
+msgstr "本地端口"
+
+msgid "Local Port"
+msgstr "本地端口"
+
+msgid "Time Out(s)"
+msgstr "超时（秒）"
+
+msgid "Baud Rate"
+msgstr "波特率"
+
+msgid "Data bits"
+msgstr "数据位"
+
+msgid "Stop bits"
+msgstr "停止位"
+
+msgid "Parity"
+msgstr "校验位"
+
+msgid "Serial Configuration"
+msgstr "串口参数配置"
+
+msgid "Network Settings"
+msgstr "网络配置"
+
+msgid "All Port"
+msgstr "所有端口"
+
+msgid "Port1"
+msgstr "端口1"
+
+msgid "Port1 Settings"
+msgstr "端口1设置"
+
+msgid "Serial Port"
+msgstr "串口"
+
+msgid "TCP Server"
+msgstr "TCP 服务器"
+
+msgid "UDP Mode"
+msgstr "UDP 模式"
+
+msgid "Serial Server"
+msgstr "串口服务"
+
+msgid "Serial Utility"
+msgstr "串口服务"
+
+msgid "POE Power"
+msgstr "POE电源"
+
+msgid "Serial POE Power Output"
+msgstr "串口POE电源输出"
+
+msgid "ON/OFF"
+msgstr "开/关"
+
+msgid "Serial POE Power Output ON/OFF"
+msgstr "串口POE输出开关"
+
+msgid "ON"
+msgstr "打开"
+
+msgid "OFF"
+msgstr "关闭"
+
+msgid "Network Proto"
+msgstr "网络协议"
+
+msgid "Listen Port"
+msgstr "本地端口"
+
+msgid "Server IP Address"
+msgstr "服务器IP"
+
+msgid "Server Port"
+msgstr "服务端口"
+
+msgid "Hexadecimal"
+msgstr "Hex发送心跳包"
+
+

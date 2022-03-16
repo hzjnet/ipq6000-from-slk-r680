@@ -1,0 +1,25 @@
+<%#
+ Copyright 2008 Steven Barth <steven@midlink.org>
+ Copyright 2008 Jo-Philipp Wich <jow@openwrt.org>
+ Licensed to the public under the Apache License 2.0.
+-%>
+
+<%+header%>
+
+<h2><a id="content" name="content"><%:Factory Reset%></a></h2>
+
+	<form method="post" action="<%=REQUEST_URI%>" enctype="multipart/form-data">
+		<div class="cbi-section-node">
+
+			<div class="cbi-value cbi-value-last">
+				<label class="cbi-value-title"><%:Reset to defaults%>:</label>
+				<div class="cbi-value-field">
+					<input onclick="return confirm('<%:Really reset all changes?%>')" class="cbi-button cbi-button-reset" type="submit" name="reset" value="<%:Perform reset%>" />
+				</div>
+			</div>
+		</div>
+		<br />
+	</form>
+
+
+<%+footer%>

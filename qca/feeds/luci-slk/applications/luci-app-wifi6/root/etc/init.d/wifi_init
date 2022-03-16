@@ -1,0 +1,106 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+
+START=50
+STOP=90
+
+ssid_init()
+{
+	wifissid=$(uci -q get wificonfig.wlan0.ssid)
+	if [ -z "$wifissid" ];then
+		wifimac=$(slkmac | awk -F ":" '{print $5""$6 }'| tr a-z A-Z)
+		themes=$(uci -q get luci.main.mediaurlbase | grep slk)
+		if [ -n "$themes" ];then
+			uci set wificonfig.wlan0.ssid="SLK-Router_5G-$wifimac"
+			uci set wificonfig.wlan1.ssid="SLK-Router_2G-$wifimac"
+		else
+			uci set wificonfig.wlan0.ssid="Routers_5G-$wifimac"
+			uci set wificonfig.wlan1.ssid="Routers_2G-$wifimac"
+		fi
+		uci commit wificonfig	
+	fi
+}
+
+wifi_seting()
+{
+	###waln0设置
+	en1=$(uci -q get wificonfig.wlan0.en)
+	if [ -n "$en1" ];then
+		echo "wifi on"
+		uci -q del wireless.wifi0.disabled=0
+	else
+		echo "wifi off"
+		uci set wireless.wifi0.disabled=1
+	fi
+	ssid1=$(uci -q get wificonfig.wlan0.ssid)
+		uci set wireless.wlan0.ssid=$ssid1
+		echo "ssid=$ssid1"
+	security1=$(uci -q get wificonfig.wlan0.security)
+	if [ $security1 == "encryption" ];then
+		uci set wireless.wlan0.encryption='mixed-psk'
+		key1=$(uci -q get wificonfig.wlan0.key)
+		uci set wireless.wlan0.key=$key1
+	else
+		uci set wireless.wlan0.encryption='none'
+		uci -q del wireless.wlan0.key
+	fi
+	hidden1=$(uci -q get wificonfig.wlan0.hidden)
+		uci set wireless.wlan0.hidden=$hidden1
+	channel1=$(uci -q get wificonfig.wlan0.channel)
+		uci set wireless.wifi0.channel=$channel1
+	htmode1=$(uci -q get wificonfig.wlan0.htmode)
+		uci set wireless.wifi0.htmode=$htmode1
+	txpower1=$(uci -q get wificonfig.wlan0.txpower)
+		uci set wireless.wifi0.txpower=$txpower1
+
+	###waln1设置
+	en2=$(uci -q get wificonfig.wlan1.en)
+	if [ -n "$en2" ];then
+		echo "wifi on"
+		uci -q del wireless.wifi1.disabled=0
+	else
+		echo "wifi down"
+		uci set wireless.wifi1.disabled=1
+	fi
+	ssid2=$(uci -q get wificonfig.wlan1.ssid)
+		uci set wireless.wlan1.ssid=$ssid2
+	security2=$(uci -q get wificonfig.wlan1.security)
+	if [ $security2 == "encryption" ];then
+		uci set wireless.wlan1.encryption='mixed-psk' ##'psk-mixed'
+		key2=$(uci -q get wificonfig.wlan1.key)
+		uci set wireless.wlan1.key=$key2
+	else
+		uci set wireless.wlan1.encryption='none'
+		uci -q del wireless.wlan1.key
+	fi
+	hidden2=$(uci -q get wificonfig.wlan1.hidden)
+		uci set wireless.wlan1.hidden=$hidden2
+	channel2=$(uci -q get wificonfig.wlan1.channel)
+		uci set wireless.wifi1.channel=$channel2
+	htmode2=$(uci -q get wificonfig.wlan1.htmode)
+		uci set wireless.wifi1.htmode=$htmode2
+	txpower2=$(uci -q get wificonfig.wlan1.txpower)
+		uci set wireless.wifi1.txpower=$txpower2
+	uci commit wireless
+}
+
+
+start()
+{	
+	#echo "=========================="
+	# config_load wificonfig
+	# config_foreach run_wifi
+	ssid_init
+	wifi_seting
+	sleep 1
+	wifi up
+	
+}
+
+restart() {
+	wifi down
+	wifi_seting
+	sleep 1
+	wifi up
+}
+

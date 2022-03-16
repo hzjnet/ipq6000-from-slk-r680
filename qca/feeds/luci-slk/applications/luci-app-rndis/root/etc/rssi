@@ -1,0 +1,309 @@
+#/bin/sh
+
+sval=0
+
+en=0
+Debug()
+{
+	tim=$(date "+%Y-%m-%d %H:%M:%S")	#获取系统时间
+	if [ $en == 1 ];then
+		echo $tim $1					#Debug信息输出Console
+	elif [ $en == 2 ]; then
+		echo $tim $1 >> /tmp/slklog		#Debug信息输出到文件
+	fi
+}
+
+CheckRSSI()
+{
+	rssi=0
+	nr_rssi=0
+	lte_rssi=0
+	rec=$(cat /tmp/modem | grep "+CPSI:")
+	w=$(echo $rec |grep "NO SERVICE"| wc -l)
+	if [ $w -ge 1 ];then
+		Debug "NO SERVICE"
+		return
+	fi
+	Debug "$rec"
+	w=$(echo $rec |grep "NR5G_BAND"| wc -l)
+	if [ $w -ge 1 ];then
+		w=$(echo $rec |grep "32768"| wc -l)
+		if [ $w -ge 1 ];then
+			Debug "-32768"
+			return
+		fi
+		rec1=${rec##*NR5G_}
+		nr_band=${rec1%%,*} #NR5G_BAND
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		nr_rssi=${rec1%%,*} #NR5G_RSSI
+		#w=$(echo $rec |grep "NR5G_SA"| wc -l)
+		#if [ $w -ge 1 ];then
+			nr_rssi=`expr $nr_rssi / 10` #NR5G_SA RSSI
+		#fi
+		Debug "NR_BAND=$nr_band NR_RSSI=$nr_rssi"
+		rssi=$nr_rssi
+		if [ $nr_rssi -ge "-90" ];then
+			Debug "NR5G RSSI=5"
+			echo "5G=5" >> /tmp/signal
+			nr_rssi=5
+		elif [ $nr_rssi -ge "-100" ];then
+			Debug "NR5G RSSI=4"
+			echo "5G=4" >> /tmp/signal
+			nr_rssi=4	
+		elif [ $nr_rssi -ge "-110" ];then
+			Debug "NR5G RSSI=3"
+			echo "5G=3" >> /tmp/signal
+			nr_rssi=3	
+		elif [ $nr_rssi -ge "-120" ];then
+			Debug "NR5G RSSI=2"
+			echo "5G=2" >> /tmp/signal
+			nr_rssi=2	
+		elif [ $nr_rssi -ge "-130" ];then
+			Debug "NR5G RSSI=1"
+			echo "5G=1" >> /tmp/signal
+			nr_rssi=1	
+		elif [ $nr_rssi -ge "-140" ];then
+			Debug "NR5G RSSI=0"
+			echo "5G=0" >> /tmp/signal
+			nr_rssi=0	
+		else
+			Debug "NR5G RSSI=Error"
+			nr_rssi=0			
+		fi
+	fi
+	
+	w=$(echo $rec |grep "LTE"|grep "EUTRAN"| wc -l)
+	if [ $w -ge 1 ];then
+		rec1=${rec#*EUTRAN-}
+		lte_band=${rec1%%,*} #EUTRAN-BAND
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		#rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		lte_rssi=${rec1%%,*} #LTE_RSSI
+		lte_rssi=`expr $lte_rssi / 10` #LTE_RSSI
+		Debug "LTE_BAND=$lte_band LTE_RSSI=$lte_rssi"
+		if [ $rssi == 0 ];then
+			rssi=$lte_rssi
+		fi
+		Debug "$lte_rssi=="
+		if [ $lte_rssi -le "-140" ];then
+			Debug "LTE RSSI=0"
+			echo "4G=0" >> /tmp/signal
+			lte_rssi=0
+		elif [ $lte_rssi -le "-120" ];then
+			Debug "LTE RSSI=1"
+			echo "4G=1" >> /tmp/signal
+			lte_rssi=1
+		elif [ $lte_rssi -le "-110" ];then
+			Debug "LTE RSSI=2"
+			echo "4G=2" >> /tmp/signal
+			lte_rssi=2
+		elif [ $lte_rssi -le "-100" ];then
+			Debug "LTE RSSI=3"
+			echo "4G=3" >> /tmp/signal
+			lte_rssi=3
+		elif [ $lte_rssi -le "-90" ];then
+			Debug "LTE RSSI=4"
+			echo "4G=4" >> /tmp/signal
+			lte_rssi=4
+		elif [ $lte_rssi -le "-10" ];then
+			Debug "LTE RSSI=5"
+			echo "4G=5" >> /tmp/signal
+			lte_rssi=5
+		else
+			Debug "LTE RSSI=Error"
+			echo "4G=0" >> /tmp/signal
+			lte_rssi=0
+		fi	
+	fi
+	
+	w=$(echo $rec |grep "WCDMA"| wc -l)
+	if [ $w -ge 1 ];then
+		w=$(echo $rec |grep "UNKNOWN"|wc -l)
+		if [ $w -ge 1 ];then
+			Debug "UNKNOWN BAND"
+			return
+		fi
+		rec1=${rec##*WCDMA}
+		w_band=${rec1%%,*} #WCDMA
+		rec=$(cat /tmp/modem |grep "+CSQ:" |awk '{print $2}')
+		csq=${rec%%,*}
+		Debug "WCDMA_BAND=WCDMA $w_band WCDMA_RSSI=$csq"
+		if [ $rssi == 0 ];then
+			rssi=$csq
+		fi
+	fi
+}
+
+Test()
+{
+	sendat 2 "AT+CPSI?" > /tmp/modem
+	sendat 2 "AT+CSQ" >> /tmp/modem
+}
+
+# -ge大于等于 -le小于等于
+Signal_level()
+{
+	if [ $rssi == "99" ] || [ $rssi == "0" ];then
+		Debug "RSSI=00"
+		sval=0
+	elif [ $rssi -ge "19" ];then	
+		Debug "RSSI=04"
+		sval=4
+	elif [ $rssi -ge "14" ];then	
+		Debug "RSSI=03"
+		sval=3
+	elif [ $rssi -ge "9" ];then	
+		Debug "RSSI=02"
+		sval=2
+	elif [ $rssi -ge "4" ];then	
+		Debug "RSSI=01"
+		sval=1
+		
+	elif [ $rssi -le "-140" ];then
+		Debug "RSSI=0"
+		sval=0
+	elif [ $rssi -le "-120" ];then
+		Debug "RSSI=1"
+		sval=1
+	elif [ $rssi -le "-110" ];then
+		Debug "RSSI=2"
+		sval=2
+	elif [ $rssi -le "-100" ];then
+		Debug "RSSI=3"
+		sval=3
+	elif [ $rssi -le "-10" ];then
+		Debug "RSSI=4"
+		sval=4
+	else
+		Debug "RSSI=Error"
+		sval=0
+	fi
+}	
+
+R620_LED()
+{
+	if [ $1 -ge "1" ];then
+		echo 1 > $(ls /sys/class/leds/*\:rssi1/brightness)
+	else
+		echo 0 > $(ls /sys/class/leds/*\:rssi1/brightness)
+	fi
+	if [ $1 -ge "2" ];then
+		echo 1 > $(ls /sys/class/leds/*\:rssi2/brightness)
+	else
+		echo 0 > $(ls /sys/class/leds/*\:rssi2/brightness)
+	fi
+	if [ $1 -ge "3" ];then
+		echo 1 > $(ls /sys/class/leds/*\:rssi3/brightness)
+	else
+		echo 0 > $(ls /sys/class/leds/*\:rssi3/brightness)
+	fi
+	if [ $1 -ge "4" ];then
+		echo 1 > $(ls /sys/class/leds/*\:rssi4/brightness)
+	else
+		echo 0 > $(ls /sys/class/leds/*\:rssi4/brightness)
+	fi
+}
+R610_LED()
+{
+	if [ $1 -ge "1" ];then
+		echo "1" > /sys/class/leds/nhx\:lterssi3/brightness
+	else
+		echo "0" > /sys/class/leds/nhx\:lterssi3/brightness
+	fi
+	if [ $1 -ge "3" ];then
+		echo "1" > /sys/class/leds/nhx\:lterssi1/brightness
+	else
+		echo "0" > /sys/class/leds/nhx\:lterssi1/brightness
+	fi
+	if [ $1 -ge "4" ];then
+		echo "1" > /sys/class/leds/nhx\:lterssi2/brightness
+	else
+		echo "0" > /sys/class/leds/nhx\:lterssi2/brightness
+	fi
+	
+	if [ $2 -ge "1" ];then
+		echo "1" > /sys/class/leds/nhx\:nrrssi1/brightness
+	else
+		echo "0" > /sys/class/leds/nhx\:nrrssi1/brightness
+	fi
+	if [ $2 -ge "3" ];then
+		echo "1" > /sys/class/leds/nhx\:nrrssi2/brightness
+	else
+		echo "0" > /sys/class/leds/nhx\:nrrssi2/brightness
+	fi
+	if [ $2 -ge "4" ];then
+		echo "1" > /sys/class/leds/nhx\:nrrssi3/brightness
+	else
+		echo "0" > /sys/class/leds/nhx\:nrrssi3/brightness
+	fi
+}
+
+R4008_LED()
+{
+	if [ $1 -ge "1" ];then
+		echo "0" > /sys/class/gpio/gpio3/value
+	else
+		echo "1" > /sys/class/gpio/gpio3/value
+	fi
+	if [ $1 -ge "3" ];then
+		echo "0" > /sys/class/gpio/gpio2/value
+	else
+		echo "1" > /sys/class/gpio/gpio2/value
+	fi
+	if [ $1 -ge "4" ];then
+		echo "0" > /sys/class/gpio/gpio0/value
+	else
+		echo "1" > /sys/class/gpio/gpio0/value
+	fi
+}
+
+OutSignal()
+{
+	cat /tmp/signal > /tmp/signal2
+	echo -e "\c" > /tmp/signal
+}
+
+#获取设备型号，根据型号驱动LED信号指示灯
+model=$(uci get system.@system[0].model)
+Debug "Model:$model"
+
+Select_model()
+{
+	if [ $model == "SLK-R620" ];then
+		Debug "LED=$sval $model"
+		R620_LED $sval
+	elif [ $model == "SLK-R4008" ];then
+		Debug "LED=$sval $model"
+		R4008_LED $sval
+	elif [ $model == "SLK-A910" ];then
+		Debug "LED=$sval $model"
+	elif [ $model == "SLK-E910" ];then
+		Debug "LED=$sval $model"
+	elif [ $model == "SLK-A980" ];then
+		Debug "LED=$sval $model"
+	elif [ $model == "SLK-R610" ];then
+		Debug "LED=$sval $model"
+		R610_LED $sval $nr_rssi 
+	elif [ $model == "WL-450T-LT" ];then
+		Debug "LED=$sval $model"
+		R620_LED $sval
+	else
+		Debug "No model led"
+	fi
+}
+
+while [ 1 ]
+do
+	#Test
+	CheckRSSI
+	Signal_level
+	#R620_LED $sval
+	OutSignal
+	Select_model
+	sleep 3
+done

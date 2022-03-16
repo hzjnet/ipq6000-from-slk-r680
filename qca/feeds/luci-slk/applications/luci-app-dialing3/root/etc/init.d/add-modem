@@ -1,0 +1,36 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+
+START=80
+STOP=90
+
+start()
+{
+	# 添加sim8200 qmimux0驱动
+	tar -zxvf /etc/qmi_wwan_simcom.tgz -C /lib/modules/`uname -r`/ 
+	tar -zxvf /etc/dial.tgz -C /usr/sbin/
+	# modprobe qmi_wwan.ko
+	# modprobe usbnet.ko
+	insmod qmi_wwan_simcom
+	uci set network.SIM=interface
+	uci commit
+	/etc/init.d/network reload
+	#tar -zxvf /etc/qmi_wwan0.tgz -C /lib/modules/`uname -r`/ 
+	#modprobe qmi_wwan.ko
+	# cpu=$(cat /proc/cpuinfo |grep MT7621 |wc -l)
+	# if [ $cpu -ge 1 ]; then
+		#tar -zxvf /etc/slkapp/mt7621/simcom-cm.tgz -C /usr/sbin/
+		# tar -zxvf /etc/slkapp/mt7621/sim8x00.tgz -C /lib/modules/`uname -r`/
+		# modprobe qmi-wwan-simcom.ko		
+	# fi
+	# cpu=$(cat /proc/cpuinfo |grep ARM |wc -l)
+	# if [ $cpu -ge 1 ]; then
+		# tar -zxvf /etc/slkapp/sim8x00_wwan.tgz -C /lib/modules/`uname -r`/ 
+		#tar -zxvf /etc/slkapp/simcom-cm-ipq4029.tgz -C /usr/sbin/
+		# modprobe qmi-wwan-simcom.ko		
+	# fi	
+	rm -r /etc/init.d/add-modem
+}
+
+
+

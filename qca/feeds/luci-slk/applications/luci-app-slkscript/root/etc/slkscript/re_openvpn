@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+#Simcom module dialing script
+#Software version V1.0.1
+#
+
+
+xx=0
+en=0 #调试开关：0关闭，1打开 ，2输出到文件
+outfile="/tmp/slklog3"	#输出文件
+Debug()
+{
+	tim=$(date "+%Y-%m-%d %H:%M:%S")	#获取系统时间
+	if [ $en == 1 ]; then
+		echo $tim $1					#打印输出
+	elif [ $en == 2 ]; then
+		echo $tim $1 >> $outfile		#输出到文件
+	fi
+}
+
+#############################################
+#											#
+#				进入主函数					#
+#											#
+#############################################
+while [ 1 ]
+do
+	if [ $(uci -q get openvpn.sample_client.enabled) == "1"	]; then #读取openvpn开启使能
+		Debug "openvpn服务：启用"
+		sleep 1s
+		if [ $(uci -q get openvpn.sample_client.relink) == "0" ]; then #读取openvpn自动重连开启使能 
+			Debug "openvpn重连服务：未启用"
+			break
+		else
+			Debug "openvpn重连服务：启用"
+			ifname=$(uci -q get network.openvpn.ifname) #获取openvpn接口名称
+			if [ -n "$ifname" ];then
+				Debug "$ifname"
+				iface=$(ifconfig | grep '$ifname' |wc -l) #查看接口是否存在
+				gw=$(route | grep "$ifname" | grep "default" |awk -F ' ' '{ print $2}') #查看接口网关
+				if [ -n "iface" ] && [ -n "gw" ]; then
+					Debug "$iface"
+					Debug "$gw"
+					ping -c 1 -w 1 -I $ifname $gw > /dev/null 2>&1
+					if [ $? -eq 0 ];then  
+						Debug "openvpn连接正常" 
+						xx=0
+						sleep 1s
+					else  
+						Debug "openvpn连接异常" 
+						let xx++
+						sleep 2s
+					fi
+					if [ $xx == 5 ];then
+						xx=0
+						Debug "openvpn重启"
+						/etc/init.d/openvpn restart &
+						sleep 2s
+					fi
+				else
+					Debug "openvpn重置"
+					/etc/init.d/openvpn restart &
+					sleep 5s
+				fi
+			fi
+		fi
+	else
+		Debug "openvpn服务：未启用"
+		break
+	fi
+	sleep 5s
+done
+	
+
+
+

@@ -1,0 +1,6 @@
+#!/bin/sh
+uci batch <<-EOF
+	set luci.themes.zx=/luci-static/zx
+	set luci.main.mediaurlbase=/luci-static/zx
+        commit luci
+EOF

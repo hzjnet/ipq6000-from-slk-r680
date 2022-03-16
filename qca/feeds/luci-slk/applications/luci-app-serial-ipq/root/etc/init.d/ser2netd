@@ -1,0 +1,9 @@
+#!/bin/sh /etc/rc.common
+START=60
+
+start()
+{
+		/etc/setusb 1 & 
+		wifi up
+
+}

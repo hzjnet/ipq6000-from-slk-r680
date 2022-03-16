@@ -1,0 +1,96 @@
+<%#
+ Copyright 2010 Jo-Philipp Wich <jow@openwrt.org>
+ Licensed to the public under the Apache License 2.0.
+
+-%>
+
+<%+header%>
+
+<%
+local fs   = require "nixio.fs"
+local has_ping6 = fs.access("/bin/ping6") or fs.access("/usr/bin/ping6")
+local has_traceroute6 = fs.access("/usr/bin/traceroute6")
+%>
+
+<script type="text/javascript" src="<%=resource%>/cbi.js"></script>
+<script type="text/javascript">//<![CDATA[
+	var stxhr = new XHR();
+
+	function update_status(field, proto)
+	{
+		var tool = field.name;
+		var addr = field.value;
+		var protocol = proto ? "6" : "";
+
+		var legend = document.getElementById('diag-rc-legend');
+		var output = document.getElementById('diag-rc-output');
+
+		if (legend && output)
+		{
+			output.innerHTML =
+				'<img src="<%=resource%>/icons/loading.gif" alt="<%:Loading%>" style="vertical-align:middle" /> ' +
+				'<%:Waiting for command to complete...%>'
+			;
+
+			legend.parentNode.style.display = 'block';
+			legend.style.display = 'inline';
+
+			stxhr.get('<%=luci.dispatcher.build_url("admin", "network")%>/diag_' + tool + protocol + '/' + addr, null,
+				function(x)
+				{
+					if (x.responseText)
+					{
+						legend.style.display = 'none';
+						output.innerHTML = String.format('<pre>%h</pre>', x.responseText);
+					}
+					else
+					{
+						legend.style.display = 'none';
+						output.innerHTML = '<span class="error"><%:Bad address specified!%></span>';
+					}
+				}
+			);
+		}
+	}
+//]]></script>
+
+<form method="post" action="<%=pcdata(luci.http.getenv("REQUEST_URI"))%>">
+	<div class="cbi-map">
+		<h2><a id="content" name="content"><%:Diagnostics%></a></h2>
+
+		<fieldset class="cbi-section">
+			<legend><%:Network Utilities%></legend>
+
+			<br />
+
+			<div style="width:50%; float:left">
+
+			<select id="id_select" type="text" onChange="selectOnChangeFunc()">  
+				<option value="" class="cls_option_defined">---custom---</option>  
+				<option value="www.seriallink.net">Seriallink</option>  
+				<option value="8.8.8.8">Google</option>  
+				<option value="114.114.114.114">Baidu</option>  
+			</select>  
+			<input style="width:30%; type="text" id="id_input"   name="ping"  value="">  
+			<input type="button" value="<%:Ping%>" class="cbi-button cbi-button-apply" onclick="update_status(this.form.ping)" />
+			
+			<script>  
+				function selectOnChangeFunc() {  
+					document.getElementById('id_input').value = document.getElementById('id_select').options[document.getElementById('id_select').selectedIndex].value;  
+				}  
+			</script> 				
+
+			</div>
+
+			<br style="clear:both" /><br />
+  
+		</fieldset>
+	</div>
+
+	<fieldset class="cbi-section" style="display:none">
+		<legend id="diag-rc-legend"><%:Collecting data...%></legend>
+		<span id="diag-rc-output"></span>
+	</fieldset>
+</form>
+ 
+<%+footer%>

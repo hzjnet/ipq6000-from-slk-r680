@@ -1,0 +1,22 @@
+<%+cbi/valueheader%>
+<%-
+local c = require("luci.model.uci").cursor():changes()
+if c and next(c) then
+-%>
+	<!-- <p class="warning"><%:Warning: There are unsaved changes that will be lost while rebooting!%></p>  -->
+<%-
+end
+if not reboot then 
+-%>
+			<!-- <div class="cbi-value cbi-value-last"> -->
+				<label class="cbi-value-title"><%:Restart now%>:</label>
+				<div class="cbi-value-field">
+					<p><a class="cbi-button" style="height: 34px;line-height: 27px;" href="<%=controller%>/admin/system/reboot?reboot=1"><%:Perform reboot%></a></p> 
+				</div>
+			<!-- </div> -->
+<!-- <p><a href="<%=controller%>/admin/system/reboot?reboot=1"><%:Perform reboot%></a></p> -->
+<%- else -%>
+<p><%:Please wait: Device rebooting...%></p>
+<script type="text/javascript">setTimeout("location='<%=controller%>/admin'", 60000)</script>
+<%- end -%>
+<%+cbi/valuefooter%>

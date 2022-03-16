@@ -1,0 +1,162 @@
+<%#
+ Copyright 2010 Jo-Philipp Wich <jow@openwrt.org>
+ Licensed to the public under the Apache License 2.0.
+
+-%>
+
+<%+header%>
+
+<%
+local fs   = require "nixio.fs"
+local has_ping6 = fs.access("/bin/ping6") or fs.access("/usr/bin/ping6")
+local has_traceroute6 = fs.access("/usr/bin/traceroute6")
+local ping_host="www.seriallink.cn"
+local pilist={"www.baidu.com","www.seriallink.cn","8.8.8.8"}
+if fs.access("/www/luci-static/WitLinc") then
+	ping_host="www.witlinc.cn"
+	pilist={"www.witlinc.cn","www.baidu.com","10.8.0.1"}
+elseif fs.access("/www/luci-static/zx") then
+	ping_host = "www.baidu.com"
+	pilist={"www.baidu.com","8.8.8.8"}
+end
+
+function ismatch(v)
+	local name=""
+	if string.match(v,"baidu") then 
+		name="baidu"
+	elseif string.match(v,"seriallink") then
+		name="seriallink"
+	elseif string.match(v,"witlinc") then
+		name="witlinc"
+	else
+		name=v
+	end
+	return name
+end
+%>
+
+<script type="text/javascript" src="<%=resource%>/cbi.js"></script>
+<script type="text/javascript">//<![CDATA[
+	var stxhr = new XHR();
+
+	function update_status(field, proto)
+	{
+		var tool = field.name;
+		var addr = field.value;
+		var protocol = proto ? "6" : "";
+		console.log(field);
+		var legend = document.getElementById('diag-rc-legend');
+		var output = document.getElementById('diag-rc-output');
+
+		if (legend && output)
+		{
+			output.innerHTML =
+				'<img src="<%=resource%>/icons/loading.gif" alt="<%:Loading%>" style="vertical-align:middle" /> ' +
+				'<%:Waiting for command to complete...%>'
+			;
+
+			legend.parentNode.style.display = 'block';
+			legend.style.display = 'inline';
+
+			stxhr.get('<%=luci.dispatcher.build_url("admin", "system")%>/diag_' + tool + protocol + '/' + addr, null,
+				function(x)
+				{
+					if (x.responseText)
+					{
+						legend.style.display = 'none';
+						output.innerHTML = String.format('<pre>%h</pre>', x.responseText);
+					}
+					else
+					{
+						legend.style.display = 'none';
+						output.innerHTML = '<span class="error"><%:Bad address specified!%></span>';
+					}
+				}
+			);
+		}
+	}
+	
+<%if(string.gsub(luci.sys.exec("uci get system.@system[0].model"),"%s+","") == "WL-245N-S") then%>
+	function update__status(field, proto)
+	{
+		var tool = "traceroute";
+		var addr = field.value;
+		var protocol = proto ? "6" : "";
+		console.log(field);
+		var legend = document.getElementById('diag-rc-legend');
+		var output = document.getElementById('diag-rc-output');
+
+		if (legend && output)
+		{
+			output.innerHTML =
+				'<img src="<%=resource%>/icons/loading.gif" alt="<%:Loading%>" style="vertical-align:middle" /> ' +
+				'<%:Waiting for command to complete...%>'
+			;
+
+			legend.parentNode.style.display = 'block';
+			legend.style.display = 'inline';
+
+			stxhr.get('<%=luci.dispatcher.build_url("admin", "system")%>/diag_' + tool + protocol + '/' + addr, null,
+				function(x)
+				{
+					if (x.responseText)
+					{
+						legend.style.display = 'none';
+						output.innerHTML = String.format('<pre>%h</pre>', x.responseText);
+					}
+					else
+					{
+						legend.style.display = 'none';
+						output.innerHTML = '<span class="error"><%:Bad address specified!%></span>';
+					}
+				}
+			);
+		}
+	}
+	<%end%>
+	
+//]]></script>
+
+<form method="post" action="<%=pcdata(luci.http.getenv("REQUEST_URI"))%>">
+	<div class="cbi-map">
+		<h2><a id="content" name="content"><%:Diagnostics%></a></h2>
+
+		<fieldset class="cbi-section">
+			<legend><%:Network Utilities%></legend>
+
+			<div style="width:50%; float:left">
+				<select name="pings_proto" style="width:auto" onchange="select_ping(this)">
+					<%for i,v in ipairs(pilist) do%>
+						<option value="<%=v%>" <%=ifattr(v == ping_host, "selected", "selected")%> ><%=ismatch(v)%></option>
+					<%end%>
+				</select> 
+				<input style="width: 30%" type="text" value="<%=ping_host%>" name="ping" />
+				<input type="button" value="<%:Ping%>" class="cbi-button cbi-button-apply" onclick="update_status(this.form.ping)" />
+				<%if(string.gsub(luci.sys.exec("uci get system.@system[0].model"),"%s+","") == "WL-245N-S") then%>
+					<input type="button" value="<%:Traceroute%>" class="cbi-button cbi-button-apply" onclick="update__status(this.form.ping)" />
+				<%end%>
+			</div>
+			<script>  
+				function select_ping(than)
+				{
+					if(than.name == "nslookups_proto")
+						document.getElementsByName("nslookup")[0].value = than.value;
+					else if(than.name == "pings_proto")
+						document.getElementsByName("ping")[0].value = than.value;
+					else if(than.name == "traceroutes_proto")
+						document.getElementsByName("traceroute")[0].value = than.value;
+				} 
+			</script>
+
+			<br style="clear:both" /><br />
+  
+		</fieldset>
+	</div>
+
+	<fieldset class="cbi-section" style="display:none">
+		<legend id="diag-rc-legend"><%:Collecting data...%></legend>
+		<span id="diag-rc-output"></span>
+	</fieldset>
+</form>
+ 
+<%+footer%>

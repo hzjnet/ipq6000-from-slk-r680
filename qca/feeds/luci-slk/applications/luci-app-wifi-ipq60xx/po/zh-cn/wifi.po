@@ -1,0 +1,31 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+msgid "2.4G Client"
+msgstr "2.4G客户端"
+
+msgid "5.8G Client"
+msgstr "5.8G客户端"
+
+msgid "WiFi Interface"
+msgstr "无线接口"
+
+msgid "Configure 2.4G WiFi"
+msgstr "配置2.4G WiFi"
+
+msgid "Configure 5.8G WiFi"
+msgstr "配置5.8G WiFi"
+
+msgid "Bridge Lan"
+msgstr "桥接Lan口"
+
+msgid "LAN port of bridge should share the same network segment with upstream equipment"
+msgstr "桥接Lan口需与上游设备同一网段"

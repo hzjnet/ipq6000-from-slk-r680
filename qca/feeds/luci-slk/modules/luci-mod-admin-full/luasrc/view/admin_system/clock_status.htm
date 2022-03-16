@@ -1,0 +1,65 @@
+<%+cbi/valueheader%>
+<style>
+#clockstatus{
+	display:none;
+}
+
+</style>
+<script type="text/javascript">//<![CDATA[
+	function yeardate(year,month,day,hour,min,sec){
+		if(month<10){
+			month="0"+month
+		}
+		if(day<10){
+			day="0"+day
+		}
+		if(hour<10){
+			hour="0"+hour
+		}
+		if(min<10){
+			min="0"+min
+		}
+		if(sec<10){
+			sec="0"+sec
+		}
+		var datetime=year+"-"+month+"-"+day+" "+hour+":"+min+":"+sec
+		return datetime
+	}
+	XHR.poll(5, '<%=luci.dispatcher.build_url("admin", "system", "clock_status")%>', null,
+		function(x, rv)
+		{
+			//console.log(rv,Math.floor((new Date()).getTime() / 1000))
+			var s = document.getElementById('<%=self.option%>-clock-status');
+			if (s)
+			{
+				s.innerHTML = yeardate(rv.timestring.year,rv.timestring.month,rv.timestring.day,rv.timestring.hour,rv.timestring.min,rv.timestring.sec) || '?';
+			}
+			var buttonapply = document.getElementById('clockstatus');
+			var luciLocation = <%= luci.http.write_json(luci.dispatcher.context.path) %>;
+			if(luciLocation[2]=="autoreboot"){buttonapply.style.display="none";s.style="line-height: 32px;";}else{buttonapply.style.display="revert";}
+		}
+	);
+
+	function sync_clock(btn)
+	{
+		btn.disabled = true;
+		btn.value    = '<%:Synchronizing...%>';
+
+		XHR.get('<%=luci.dispatcher.build_url("admin", "system", "clock_status")%>',
+			{ set: Math.floor((new Date()).getTime() / 1000) },
+			function()
+			{
+				
+				btn.disabled = false;
+				btn.value    = '<%:Sync with browser%>';
+			}
+		);
+
+		return false;
+	}
+//]]></script>
+
+<span id="<%=self.option%>-clock-status"><em><%:Collecting data...%></em></span>
+<input type="button" class="cbi-button cbi-button-apply" id="clockstatus" value="<%:Sync with browser%>" onclick="return sync_clock(this)" />
+
+<%+cbi/valuefooter%>

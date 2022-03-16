@@ -1,0 +1,33 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+
+START=30
+STOP=60
+
+start()
+{
+	net="modem"
+	uci set network.$net=interface
+	uci set network.$net.proto="dhcp"
+	uci set network.$net.ifname="wwan0"
+	uci set network.$net.metric='50'
+	uci commit
+	/etc/init.d/network reload
+	
+	cpu=$(cat /proc/cpuinfo |grep MT7621 |wc -l)
+	if [ $cpu -ge 1 ]; then
+		tar -zxvf /etc/slkapp/mt7621/simcom-cm.tgz -C /usr/sbin/
+		tar -zxvf /etc/slkapp/mt7621/sim8x00.tgz -C /lib/modules/`uname -r`/
+		modprobe qmi-wwan-simcom.ko		
+	fi
+	# cpu=$(uci -q get modem.@ndis[0].model |grep nr5g |wc -l)
+	# if [ $cpu -ge 1 ]; then
+		tar -zxvf /etc/slkapp/sim8x00_wwan.tgz -C /lib/modules/`uname -r`/ 
+		tar -zxvf /etc/slkapp/simcom-cm-ipq4029.tgz -C /usr/sbin/
+		modprobe qmi-wwan-simcom.ko		
+	#fi	
+	rm -r /etc/init.d/add-modem
+}
+
+
+

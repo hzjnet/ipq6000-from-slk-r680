@@ -1,0 +1,79 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+msgid "2.4G Client"
+msgstr "2.4G客户端"
+
+msgid "5.8G Client"
+msgstr "5.8G客户端"
+
+msgid "WiFi Interface"
+msgstr "无线接口"
+
+msgid "Configure 2.4G WiFi"
+msgstr "配置2.4G WiFi"
+
+msgid "Configure 5.8G WiFi"
+msgstr "配置5.8G WiFi"
+
+msgid "Bridge Lan"
+msgstr "桥接Lan口"
+
+msgid "LAN port of bridge should share the same network segment with upstream equipment"
+msgstr "桥接Lan口需与上游设备同一网段"
+
+msgid "Wireless Network"
+msgstr "WiFi无线网络"
+
+msgid "Configure WiFi 2.4G"
+msgstr "WiFi配置-2.4G"
+
+msgid "Configure WiFi 5.8G"
+msgstr "WiFi配置-5.8G"
+
+msgid "Basic Configuration"
+msgstr "基本配置"
+
+msgid "Advanced Configuration"
+msgstr "高级配置"
+
+msgid "Enabled"
+msgstr "开启"
+
+msgid "WiFi Name"
+msgstr "WiFi名称"
+
+msgid "Security"
+msgstr "安全"
+
+msgid "WiFi Key"
+msgstr "WiFi密码"
+
+msgid "Hide ESSID"
+msgstr "隐藏WiFi名称"
+
+msgid "Channel"
+msgstr "信道"
+
+msgid "Width"
+msgstr "频宽"
+
+msgid "Transmit Power"
+msgstr "发射功率"
+
+msgid "Low"
+msgstr "低"
+
+msgid "Medium"
+msgstr "中"
+
+msgid "High"
+msgstr "高"

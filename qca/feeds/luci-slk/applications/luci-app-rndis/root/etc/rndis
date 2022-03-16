@@ -1,0 +1,547 @@
+#!/bin/sh
+#
+#Simcom module dialing script
+#Software version V1.0.1
+#
+
+device="/dev/ttyUSB2"	#定义模块端口
+status=0
+x=0
+xx=0
+xh=0
+m=0
+
+en=0 #调试开关：0关闭，1打开 ，2输出到文件
+outfile="/tmp/slklog"	#输出文件
+Debug()
+{
+	tim=$(date "+%Y-%m-%d %H:%M:%S")	#获取系统时间
+	if [ $en == 1 ]; then
+		echo $tim $1					#打印输出
+	elif [ $en == 2 ]; then
+		echo $tim $1 >> $outfile		#输出到文件
+	fi
+}
+
+
+
+#检测信号值强度
+check_csq()
+{
+	rec=$( sendat 2 "AT+CSQ" | grep "+CSQ:" )
+	echo $rec >> /tmp/modem2
+}
+#查看IMEI
+check_imei(){
+	Debug "Check the IMEI"
+	rec=$(sendat 2 "AT" 500 |grep OK |wc -l) 
+	if [ $rec == "1" ];then
+		sleep 1s
+	else
+		sleep 5s
+	fi
+	str=$( sendat 2 "AT+CGSN"  | sed -n '2p'  )
+	echo $str > /tmp/imei
+}
+
+#查看运行商
+check_cops(){
+	Debug "Check the COPS"
+	str=$( sendat 2 "AT+COPS?" |grep "+COPS:" )
+	echo $str >> /tmp/modem2
+}
+
+#查看服务
+check_cpsi(){
+	Debug "Check the CPSI"
+	str=$( sendat 2 "AT+CPSI?" |grep "+CPSI:" )
+	echo $str >> /tmp/modem2
+}
+
+#重启模块
+modem_reset()
+{
+	Debug "Reboot the modem"
+	sendat 2 "AT+CFUN=0" 1000 > /dev/null
+	sleep 5s
+	sendat 2 "AT+CFUN=1" 1000 > /dev/null
+	sendat 2 "AT+CFUN=1" 1000 > /dev/null
+	ifup modem > /dev/null 2>&1
+	sleep 3s
+	status=0
+} 
+
+#4G模块拔号
+RndisAT() {	
+	#查看是否注册
+	rec1=$(sendat 2 'AT+CEREG?'| grep "0,1" | wc -l)
+	rec2=$(sendat 2 'AT+CEREG?'| grep "0,5" | wc -l)
+	Debug "CGREG $rec1 $rec2"
+	if [ $rec1 == "1" ] || [ $rec2 == "1" ]; then
+	
+		ser=$( sendat 2 "AT+CPSI?" |grep "EVDO" | wc -l)
+		if [ $ser == 1 ];then
+			ser1=$( sendat 2 "AT+CPSI?" |grep "LTE" | wc -l)
+			if [ $ser1 == 1 ];then
+				Debug  "NDIS EVOD and LTE"
+			else
+				at='AT$QCRMCALL=1,1,,,,,,\"ctnet@mycdma.cn\",\"vnet.mobi\"'
+				rec=$(sendat 2 $at 1000 | grep "$QCRMCALL:"| grep "V4" | wc -l)
+				if [ $rec == "1" ]; then
+					Debug  "NDIS EVOD OK" 
+					return 0
+				fi
+			fi
+		fi
+	
+		#查看APN,先判断apn配置不为空，再读取apn值
+		dat=$(uci show modem | grep apn |wc -l)
+		if [ $dat == "1" ]; then
+			apn=$(uci -q get modem.@ndis[0].apn)
+			#dat=$(sendat 2 'AT+CGDCONT=1,"IP","'$apn'"')
+			
+			#设置APN
+			sendat 2 'at+cgdcont=1,"IP","$apn"' > /dev/null 2>&1
+			
+			#读取用户名
+			dat=$(uci show modem | grep username |wc -l)
+			if [ $dat == "1" ]; then
+				username=$(uci -q get modem.@ndis[0].username)
+			fi
+			
+			#读取密码
+			dat=$(uci show modem | grep password |wc -l)
+			if [ $dat == "1" ]; then
+				password=$(uci -q get modem.@ndis[0].password)
+			fi
+			
+			at='AT$QCRMCALL=1,1,,,,,'
+			dat=$at'"'$apn'"','"'$username'"','"'$password'"'
+			#echo "$dat"
+			rec=$(sendat 2 $at 1000 | grep "$QCRMCALL:"| grep "V4" | wc -l)
+			if [ $rec == "1" ]; then
+				Debug  "NDIS APN ppp OK"
+				ifup modem > /dev/null 2>&1
+				#udhcpc -i wwan0 > /dev/null 2>&1 
+				Debug "Rndis dial OK,APN=$apn USER=$username pwd=$password "
+			fi
+		else
+			#清除APN
+			sendat 2 'at+cgdcont=1,"IP"' > /dev/null 2>&1
+			#NDIS拔号
+			rec=$(sendat 2 'AT$QCRMCALL=1,1' 1000| grep "$QCRMCALL:"| grep "V4" | wc -l)
+			if [ $rec == "1" ]; then
+				Debug  "NDIS ppp OK"
+				ifup modem > /dev/null 2>&1
+				#udhcpc -i wwan0 > /dev/null 2>&1 
+			fi
+		fi
+	fi
+}
+
+#设置模块参数
+set_modem()
+{
+	##读取WEB配置,设置模块参数
+	if [ $status == 1 ];then
+		status=2
+		#sendat 2 'ATZ' 500 > /dev/null 2>&1 	#先恢复默认值
+		sendat 2 'ATE0' 500 > /dev/null 2>&1	#关闭AT回显功能	
+
+		##读取4G开启使能
+		dat=$(uci -q get modem.@ndis[0].enable)
+		if [ $dat == "1" ]; then
+			dat=$(uci -q get modem.@ndis[0].bandlist)
+			if [ $dat == "1" ]; then
+				Debug  "LTE BAND1"
+				sendatsendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000000001,0x0000000000000000" 
+			elif [ $dat == "2" ]; then
+				Debug  "LTE BAND2"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000000002,0x0000000000000000" 
+			elif [ $dat == "3" ]; then
+				Debug  "LTE BAND3"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000000004,0x0000000000000000" 
+			elif [ $dat == "4" ]; then
+				Debug  "LTE BAND4"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000000008,0x0000000000000000" 
+			elif [ $dat == "5" ]; then
+				Debug  "LTE BAND5"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000000010,0x0000000000000000" 
+			elif [ $dat == "7" ]; then
+				Debug  "LTE BAND7"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000000040,0x0000000000000000" 
+			elif [ $dat == "8" ]; then
+				Debug  "LTE BAND8"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000000080,0x0000000000000000" 
+			elif [ $dat == "20" ]; then
+				Debug  "LTE BAND20"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000000080000,0x0000000000000000" 
+			elif [ $dat == "28" ]; then
+				Debug  "LTE BAND28"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000000008000000,0x0000000000000000" 
+			elif [ $dat == "38" ]; then
+				Debug  "LTE BAND38"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000002000000000,0x0000000000000000" 
+			elif [ $dat == "40" ]; then
+				Debug  "LTE BAND40"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000008000000000,0x0000000000000000" 
+			elif [ $dat == "41" ]; then
+				Debug  "LTE BAND41"
+				sendat 2 "AT+CEXTPLMNBAND=0" 
+				sendat 2 "AT+CNBP=0x0000000000000000,0x0000010000000000,0x0000000000000000" 
+			elif [ $dat == "A" ]; then
+				Debug "BAND=AUTO" 
+				sendat 2 "AT+CFSERRFATAL"
+				sendat 2 "AT+CRESET"
+				sleep 25
+			elif [ $dat == "0" ]; then
+				Debug "BAND=Distable" 
+			fi
+			
+			dat=$(uci -q get modem.@ndis[0].servertype)
+			if [ $dat == "0" ]; then
+				sendat 2 "AT+CNMP=2" > /dev/null 2>&1
+				Debug "Lock network auto"
+			elif [ $dat == "1" ]; then
+				sendat 2 "AT+CNMP=71" > /dev/null 2>&1
+				Debug "Lock network 5G only"
+			elif [ $dat == "2" ]; then
+				sendat 2 "AT+CNMP=38" > /dev/null 2>&1
+				Debug "Lock network 4G only"
+			elif [ $dat == "3" ]; then
+				sendat 2 "AT+CNMP=67" > /dev/null 2>&1
+				Debug "Lock network 3G only"
+			elif [ $dat == "4" ]; then
+				sendat 2 "AT+CNMP=13" > /dev/null 2>&1
+				Debug "Lock network 2G only"
+			elif [ $dat == "5" ]; then
+				sendat 2 "AT+CNMP=109" > /dev/null 2>&1
+				Debug "Lock network 4G/5G only"
+			elif [ $dat == "6" ]; then
+				sendat 2 "AT+CNMP=10" > /dev/null 2>&1
+				Debug "Lock network evdo only"
+			fi	
+		fi
+	fi
+}
+
+#检测SIM卡是否插入,10次检测不到则重启模块
+check_sim()
+{
+	while [ 1 ]
+	do
+		Debug "Check the sim"
+		rec=$( sendat 2 "AT+CPIN?")
+		rec1=$(echo $rec | grep "READY" | wc -l )
+		if [ $rec1 == 1 ]; then
+			echo "SIM READY" > /tmp/modem2 
+			x=0
+			Debug "SIM is READY"
+			return 
+		fi
+		
+		rec2=$(echo $rec | grep "ERROR" | wc -l )
+		if [ $rec2 == 1 ]; then
+			echo "SIM card not inserted"  > /tmp/modem2
+			cat /tmp/modem2 > /tmp/modem
+			Debug "SIM card not inserted"
+			wwan=$(ifconfig |grep wwan0 |wc -l)
+			if [ $wwan == "1" ];then
+				ifdown modem > /dev/null 2>&1
+			fi
+		fi
+		
+		if [ $x == 10 ]; then
+			Debug "SIM abnormal restart" 
+			modem_reset	#重启模块
+			x=0
+		fi
+		
+		let x++
+		sleep 6s
+	done
+}
+
+#检测模块是否存在
+check_tty()
+{
+	cmd=$(ls /usr/sbin |grep "sendat" |wc -l)
+	if [ $cmd -ne "1" ];then
+		Debug "Sendat command not found!"
+		exit
+	fi
+	while [ 1 ]
+	do
+		if [ ! -c "$device" ]; then
+			Debug $device "is No find"
+			status=0
+			sleep 5s
+		else
+			if [ $status == 0 ];then
+				Debug "Modem init" 
+				let status++
+			fi
+			return 0
+		fi
+	done
+}
+#杀死进程
+kill_exe()
+{
+	if [ $( pgrep -f $1 | wc -l ) -ne 0 ];then
+		kk=$(pgrep -f $1)
+		kill -9 $kk
+	fi
+}
+#软件超时退出
+Timeout()
+{
+	waitfor=8
+	command=$*
+	Debug "Run $command"
+	$command &  
+	( sleep $waitfor ; kill_exe $command  > /dev/null 2>&1)& 
+}
+
+Rndis5G()
+{
+	apn=0
+	usernam=0
+	password=0
+	rec=$(ifconfig wwan0 |grep "Mask:" |wc -l)
+	if [ $rec -ne 1 ];then
+		Debug "Rssi=$rssi"
+		if [ $rssi -ne 0 ];then
+
+			#查看APN,先判断apn配置不为空，再读取apn值
+			dat=$(uci show modem | grep apn |wc -l)
+			if [ $dat == "1" ]; then
+				apn=$(uci -q get modem.@ndis[0].apn)
+				
+				#设置APN
+				sendat 2 'at+cgdcont=1,"IP","$apn"' > /dev/null 2>&1
+				#读取用户名
+				dat1=$(uci show modem | grep username |wc -l)
+				if [ $dat1 == "1" ]; then
+					username=$(uci -q get modem.@ndis[0].username)
+				fi
+			
+				#读取密码
+				dat2=$(uci show modem | grep password |wc -l)
+				if [ $dat2 == "1" ]; then
+					password=$(uci -q get modem.@ndis[0].password)
+				fi
+			
+				#读取SIM PIN
+				dat3=$(uci show modem | grep pincode |wc -l)
+				if [ $dat3 == "1" ]; then
+					pincode=$(uci -q get modem.@ndis[0].pincode)
+				fi
+			
+				if [ $dat1 == "1" ];then
+					if [ $dat3 == "1" ];then
+						Timeout simcom-cm -s $apn $username $password 0 -p $pincode > /dev/null 2>&1
+					else
+						Timeout simcom-cm -s $apn $username $password 0 > /dev/null 2>&1
+					fi
+				else
+					Debug $apn
+					Timeout simcom-cm -s $apn > /dev/null 2>&1
+				fi
+
+			else
+				#清除APN
+				sendat 2 'at+cgdcont=1,"IP"' > /dev/null 2>&1
+				
+				Timeout simcom-cm > /dev/null 2>&1
+				Debug "Simcom-cm OK"			
+			fi	
+				
+		else
+			ifdown modem > /dev/null 2>&1
+			Debug "Modem Down"
+		fi
+		ifup modem
+	fi
+}
+#检测网络状态
+chenk_dns()
+{
+	en1=$(uci -q get modem.@ndis[0].en)
+	if [ $en1 == '1' ] ;then
+		ipadd=$(uci -q get modem.@ndis[0].ipaddress)
+		ping -c 1 -w 1 -I wwan0 $ipadd > /dev/null 2>&1
+		if [ $? -eq 0 ];then  
+			Debug "网络连接正常" 
+			xx=0
+		else  
+			Debug "网络连接异常" 
+			let xx++
+		fi	
+	fi
+	an=$(uci -q get modem.@ndis[0].an)
+	if [ $xx == $an ];then
+		xx=0
+		Debug "Abnormal network restart"
+		modem_reset	#重启模块
+	fi
+}
+CheckRSSI()
+{
+	rssi=0
+	rec=$(cat /tmp/modem | grep "+CPSI:")
+	w=$(echo $rec |grep "NO SERVICE"| wc -l)
+	if [ $w -ge 1 ];then
+		Debug "NO SERVICE"
+		return
+	fi
+	#Debug "$rec"
+	w=$(echo $rec |grep "NR5G_BAND"| wc -l)
+	if [ $w -ge 1 ];then
+		w=$(echo $rec |grep "32768"| wc -l)
+		if [ $w -ge 1 ];then
+			Debug "-32768"
+			return
+		fi
+		rec1=${rec##*NR5G_}
+		nr_band=${rec1%%,*} #NR5G_BAND
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		nr_rssi=${rec1%%,*} #NR5G_RSSI
+		#w=$(echo $rec |grep "NR5G_SA"| wc -l)
+		#if [ $w -ge 1 ];then
+			nr_rssi=`expr $nr_rssi / 10` #NR5G_SA RSSI
+		#fi
+		Debug "NR_BAND=$nr_band NR_RSSI=$nr_rssi"
+		rssi=$nr_rssi
+	fi
+	
+	w=$(echo $rec |grep "LTE"|grep "EUTRAN"| wc -l)
+	if [ $w -ge 1 ];then
+		rec1=${rec#*EUTRAN-}
+		lte_band=${rec1%%,*} #EUTRAN-BAND
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		rec1=${rec1#*,}
+		lte_rssi=${rec1%%,*} #LTE_RSSI
+		lte_rssi=`expr $lte_rssi / 10` #LTE_RSSI
+		Debug "LTE_BAND=$lte_band LTE_RSSI=$lte_rssi"
+		if [ $rssi == 0 ];then
+			rssi=$lte_rssi
+		fi
+	fi
+	
+	w=$(echo $rec |grep "WCDMA"| wc -l)
+	if [ $w -ge 1 ];then
+		w=$(echo $rec |grep "UNKNOWN" |wc -l)
+		if [ $w -ge 1 ];then
+			Debug "UNKNOWN BAND"
+			return
+		fi
+		rec1=${rec##*WCDMA}
+		w_band=${rec1%%,*} #WCDMA
+		rec=$(cat /tmp/modem |grep "+CSQ:" |awk '{print $2}')
+		csq=${rec%%,*}
+		Debug "WCDMA_BAND=WCDMA $w_band WCDMA_RSSI=$csq"
+		if [ $rssi == 0 ];then
+			rssi=$csq
+		fi
+	fi
+
+}
+
+#检测无信号3次，关闭wwan0
+Checkxh()
+{
+	if [ $rssi == 0 ];then
+		let xh++
+	else
+		xh=0
+	fi		
+	if [ $xh == 3 ];then
+		wwan=$(ifconfig |grep wwan0 |wc -l)
+		if [ $wwan == "1" ];then
+			ifup modem > /dev/null 2>&1
+			Debug "Modem Down the 3"
+		fi	
+	fi
+}
+
+Chenk_modem()
+{
+	if [ $m == "0" ];then
+		sendat 2 ATI 1000 > /tmp/mlog
+		modems=$(cat /tmp/mlog |grep "Model" |grep "SIM7600" |wc -l)
+		if [ $modems == "1" ];then
+			uci set modem.@ndis[0].model="lte"
+			uci commit modem
+			let m++
+			Debug "Set model lte"
+		fi
+		modems=$(cat /tmp/mlog |grep "Model" |grep "SIM8200" |wc -l)
+		if [ $modems == "1" ];then
+			uci set modem.@ndis[0].model="nr5g"
+			uci commit modem
+			let m++
+			Debug "Set model nr5g"
+		fi
+	else
+		return
+	fi
+}
+
+
+#############################################
+#											#
+#				进入主函数					#
+#											#
+#############################################
+while [ 1 ]
+do
+	check_tty		#检测ttyUSB端口是否存在，成功后进入下一步
+	check_imei		#查看IMEI
+	Chenk_modem		#检测SIMCOM模块型号
+	check_sim		#检测SIM卡是否存在，成功后进入下一步
+	check_csq  		#检测信号值强度
+	check_cops 		#查看运行商
+	check_cpsi 		#查看服务
+	cat /tmp/modem2 > /tmp/modem
+
+	set_modem		#设置模块参数
+	
+	if [ $(uci -q get modem.@ndis[0].enable) == "1" ]; then #读取4G开启使能
+		CheckRSSI
+		modems=$(cat /tmp/mlog |grep "SIM8200" |wc -l)
+		if [ $modems -ge 1 ]; then	
+			Rndis5G		
+		fi
+		modems=$(cat /tmp/mlog |grep "SIM7600" |wc -l)
+		if [ $modems -ge 1 ]; then	
+			#检查是否已经拔号成功
+			rec=$(sendat 2 'AT$QCRMCALL?' 600 | grep "$QCRMCALL:" | wc -l )
+			if [ $rec -ne "1" ];then
+				Debug "RNDIS Dialing wwan0"  
+				RndisAT
+			fi		
+		fi
+	fi
+	sleep 5s
+	Checkxh 	#检测无信号时关闭wwan0
+	chenk_dns 	#检测网络状态
+done
+	
+
+
