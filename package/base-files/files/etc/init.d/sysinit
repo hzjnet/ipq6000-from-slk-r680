@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+
+START=45
+
+start()
+{	
+###4G/5G模块电源开关，0:开机  1:关机
+echo 33 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio33/direction
+###4G模块SIM卡切换  0: SIM1  1:SIM2
+echo 30 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio30/direction
+insmod qmi_wwan_simcom
+	sync
+   	#rm -r /etc/init.d/sysinit
+}
+
+
+

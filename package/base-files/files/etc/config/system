@@ -1,0 +1,37 @@
+config system
+	#option conloglevel 1
+	#option kconloglevel 1
+	option hostname	Router
+	option timezone CST-8
+	option zonename Asia/Shanghai
+	option model SLK-R680
+	option H_ver 'V1.0'
+	option F_ver 'V1.0.2'
+
+config timeserver ntp
+	option enabled 1
+	option enable_server 0
+	list server	'0.asia.pool.ntp.org'
+	list server	'1.cn.pool.ntp.org'
+
+config led
+	option default '0'
+	option name 'wifi_2g'
+	option sysfs 'led_2g'
+	option trigger 'netdev'
+	option dev 'wifi0'
+	option mode 'tx rx'
+
+config led
+	option default '0'
+	option name 'wifi_5g'
+	option sysfs 'led_5g'
+	option trigger 'netdev'
+	option dev 'wifi1'
+	option mode 'tx rx'
+
+config led
+	option name 'system'
+	option sysfs 'led_system'
+	option default '1'
+	option trigger 'none'

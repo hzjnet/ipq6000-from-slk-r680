@@ -1,0 +1,21 @@
+config system
+	option conloglevel 1
+	option kconloglevel 1
+	option hostname	SLK
+	option timezone CST-8
+	option zonename Asia/Shanghai
+	option model SLK-W600
+	option H_ver 'V1.0'
+	option F_ver 'V1.2.1'
+
+config timeserver ntp
+	option enabled 1
+	option enable_server 0
+	list server	'0.asia.pool.ntp.org'
+	list server	'1.cn.pool.ntp.org'
+
+config led
+	option name 'system'
+	option sysfs 'led_sys'
+	option default '1'
+	option trigger 'none'

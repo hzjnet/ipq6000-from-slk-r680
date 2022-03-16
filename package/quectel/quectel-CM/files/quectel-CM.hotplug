@@ -1,0 +1,36 @@
+#!/bin/sh
+
+case "$ACTION" in
+"add")
+	if [ -d "/sys/class/net/$INTERFACE/device/GobiQMI" ]; then
+		if [ -f "/var/run/quectel-CM-$INTERFACE.pid" ]; then
+			kill -9 $(cat /var/run/quectel-CM-$INTERFACE.pid)
+			sleep 1
+		fi
+		quectel-CM -i $INTERFACE &
+	fi
+	;;
+"linkup")
+	wan1_ifname=$(uci -q get network.wwan0.ifname)
+	if [ "$INTERFACE" == "$wan1_ifname" ]; then
+		ifup -w wwan0
+	fi
+
+	wan2_ifname=$(uci -q get network.wwan1.ifname)
+	if [ "$INTERFACE" == "$wan2_ifname" ]; then
+		ifup -w wwan1
+	fi
+	;;
+"linkdown")
+	wan1_ifname=$(uci -q get network.wwan0.ifname)
+	if [ "$INTERFACE" == "$wan1_ifname" ]; then
+		ifdown -w wwan0
+	fi
+
+	wan2_ifname=$(uci -q get network.wwan1.ifname)
+	if [ "$INTERFACE" == "$wan2_ifname" ]; then
+		ifdown -w wwan1
+	fi
+	;;
+esac
+

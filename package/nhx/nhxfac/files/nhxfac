@@ -1,0 +1,26 @@
+#!/bin/sh
+
+case '$1' in
+"emmcmkfs")
+	if [ -f /dev/mmcblk0 ]; then
+		echo y || mkfs.ext4 /dev/mmcblk0
+		sync
+		echo 0
+	else
+		echo 1
+	fi
+	;;
+"emmccheckfs")
+	if [ -f /dev/mmcblk0 ]; then
+		dev_path="/dev/mmcblk0"
+		eval `blkid -o udev $dev_path`
+		if [ "$ID_FS_TYPE" == "ext4" ]; then
+			echo 0
+		else
+			echo 1
+		fi
+	else
+		echo 1
+	fi
+	;;
+esac

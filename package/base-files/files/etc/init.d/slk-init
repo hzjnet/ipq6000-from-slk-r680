@@ -1,0 +1,16 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+
+START=99
+
+start()
+{	
+	uci delete dropbear.@dropbear[0]
+	uci commit
+
+   	rm -r /etc/init.d/slk-init
+}
+
+
+
+

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+. /lib/functions/uci-defaults.sh
+
+ucidef_set_interface_mwan 0 usb0 0
+#ucidef_set_interface_mwan 1 eth3 0
+uci commit network
